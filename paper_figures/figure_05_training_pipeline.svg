@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="480" viewBox="0 0 800 480" font-family="Arial, Helvetica, sans-serif">
+<defs>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L7,3 L0,6 Z" fill="#333333"/>
+  </marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="400" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#1A1A1A">Fig. 5. Training Pipeline</text>
+<rect x="40" y="60" width="120" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="100" y="82" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">metadata.csv</text>
+<rect x="190" y="60" width="120" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="250" y="82" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">cv_folds.csv</text>
+<rect x="340" y="60" width="120" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="76" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">PalmVeinDataset</text>
+<text x="400" y="90" text-anchor="middle" font-size="8" fill="#4A4A4A">ROI+aug+enhance</text>
+<rect x="490" y="60" width="120" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="550" y="76" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">DataLoader</text>
+<text x="550" y="90" text-anchor="middle" font-size="8" fill="#4A4A4A">batch=16</text>
+<rect x="640" y="60" width="120" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="700" y="82" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">PalmVeinEmbeddingNet</text>
+<line x1="160" y1="82" x2="190" y2="82" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="310" y1="82" x2="340" y2="82" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="460" y1="82" x2="490" y2="82" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="610" y1="82" x2="640" y2="82" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="150" y="150" width="500" height="120" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="210" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Training Loop</text>
+<text x="400" y="175" text-anchor="middle" font-size="8" fill="#1A1A1A">Optimizer: Adam (lr=1e-3, wd=1e-4)</text>
+<text x="400" y="193" text-anchor="middle" font-size="8" fill="#1A1A1A">Loss: ArcFace + CE (label_smoothing=0.1)</text>
+<text x="400" y="211" text-anchor="middle" font-size="8" fill="#1A1A1A">Epochs: 60 (production) · Early stop: val EER, patience=5</text>
+<text x="400" y="229" text-anchor="middle" font-size="8" fill="#1A1A1A">Anti-overfit: dropout 0.4, augmentation, weight decay</text>
+<text x="400" y="247" text-anchor="middle" font-size="8" fill="#1A1A1A">Scheduler: NONE</text>
+<line x1="550" y1="105" x2="550" y2="145" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="250" y="300" width="300" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="319" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Checkpoint (best val EER)</text>
+<text x="400" y="333" text-anchor="middle" font-size="8" fill="#4A4A4A">checkpoint_production_full.pt</text>
+<line x1="400" y1="270" x2="400" y2="295" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="250" y="380" width="300" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="396" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">244 classes · 2,667 images</text>
+<text x="400" y="410" text-anchor="middle" font-size="8" fill="#4A4A4A">held_out_fold=null (production)</text>
+<line x1="400" y1="350" x2="400" y2="375" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="400" y="460" text-anchor="middle" font-size="8" fill="#4A4A4A">scripts/train_production.py → src/palm_vein/train.py</text>
+</svg>

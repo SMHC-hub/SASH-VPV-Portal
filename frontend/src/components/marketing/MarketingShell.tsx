@@ -7,6 +7,8 @@ import {
   Mail,
   ScanFace,
   Shield,
+  ShoppingBag,
+  ShoppingCart,
   Sparkles,
 } from "lucide-react"
 
@@ -20,6 +22,7 @@ import { useCustomerThemeStore } from "@/store/useCustomerThemeStore"
 
 const MARKETING_NAV: SidebarNavItem[] = [
   { to: "/", label: "Home", icon: Home, end: true, subtitle: "Overview & live stats" },
+  { to: "/member/shop", label: "Shop", icon: ShoppingBag, subtitle: "Browse & pay with palm" },
   { to: "/technology", label: "Technology", icon: Sparkles, subtitle: "AI vein pipeline" },
   { to: "/how-it-works", label: "How it works", icon: ScanFace, subtitle: "Step-by-step journey" },
   { to: "/security", label: "Security", icon: Shield, subtitle: "Privacy & compliance" },
@@ -28,6 +31,8 @@ const MARKETING_NAV: SidebarNavItem[] = [
 ]
 
 const MEMBER_NAV: SidebarNavItem[] = [
+  { to: "/member/shop", label: "Shop", icon: ShoppingBag, subtitle: "Marketplace" },
+  { to: "/member/cart", label: "Cart", icon: ShoppingCart, subtitle: "Your items" },
   { to: "/member/enrollment", label: "Enrollment", icon: Hand, subtitle: "Register both palms" },
   { to: "/member/recognition", label: "Recognition", icon: Fingerprint, subtitle: "Live 1:1 verify" },
 ]

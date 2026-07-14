@@ -7,6 +7,7 @@ import {
   Hand,
   ScanFace,
   Settings,
+  Store,
   UserCircle,
   Users,
 } from "lucide-react"
@@ -25,6 +26,7 @@ const NAV: SidebarNavItem[] = [
   { to: "/identities", label: "Identities", icon: Users, subtitle: "Enrolled gallery" },
   { to: "/employees", label: "Employees", icon: Briefcase, subtitle: "Staff & attendance" },
   { to: "/customers", label: "Customers", icon: UserCircle, subtitle: "Member accounts" },
+  { to: "/marketplace", label: "Marketplace", icon: Store, subtitle: "Shop moderation" },
   { to: "/logs", label: "Logs", icon: ClipboardList, subtitle: "Audit history" },
   { to: "/settings", label: "Settings", icon: Settings, subtitle: "Policy & email" },
 ]

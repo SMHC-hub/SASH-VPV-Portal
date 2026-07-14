@@ -1,0 +1,35 @@
+---
+description: PalmPay UI — original brand theme, light/dark modes, home layout
+globs: palmpay/mobile/**/*.dart
+alwaysApply: true
+---
+
+# PalmPay design system
+
+## Theme modes
+- **Default:** `ThemeMode.light`
+- **Toggle:** Profile → More → Appearance (Light / Dark / System)
+- **Persistence:** `shared_preferences` key `palmpay_theme_mode`
+- **Implementation:** `themeModeProvider` + `AppTheme.light` / `AppTheme.dark`
+
+## Brand palette (`context.pp` via `PalmPayPalette`)
+| Token | Value | Use |
+|-------|-------|-----|
+| `primary` / `mint` | `#00C896` | Balance card accent, active nav, Send & Request |
+| `accent` / `actionBlue` | `#3D8BFF` | Load Money tile, secondary actions |
+| `onBalanceCard` | white | Text on balance card |
+| `balanceGradient` | `#12352C` → `#151B24` | Balance card background |
+
+## Dark mode surfaces
+- Background `#0B0F14`, surface `#151B24`, elevated `#1E2733`, border `#2A3444`
+
+## Home layout
+- Row: **balance card (left, ~60%)** + **Load Money (accent blue) / Send & Request (primary green) stacked (right)**
+- Section: **Transactions** with See all
+- Section: **Discover** horizontal promo cards
+- Action tiles must scale text with `FittedBox` to avoid overflow on narrow screens
+
+## Code rules
+1. Use `context.pp` and `Theme.of(context).colorScheme` — not hardcoded hex
+2. Text: `AppTextStyles.title(context)` etc. (theme-aware)
+3. Never reintroduce global dark-only scaffold without dark theme pair

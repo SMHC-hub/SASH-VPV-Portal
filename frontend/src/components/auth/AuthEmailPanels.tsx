@@ -17,6 +17,8 @@ function parseApiError(err: unknown, fallback: string) {
 type EmailVerifyPanelProps = {
   email: string
   emailSent?: boolean
+  /** Shown when SMTP fails so local signup can continue */
+  initialDevCode?: string | null
   onVerified: (data: {
     access_token: string
     user: {
@@ -32,9 +34,16 @@ type EmailVerifyPanelProps = {
   onBack?: () => void
 }
 
-export function EmailVerifyPanel({ email, emailSent = true, onVerified, onBack }: EmailVerifyPanelProps) {
+export function EmailVerifyPanel({
+  email,
+  emailSent = true,
+  initialDevCode = null,
+  onVerified,
+  onBack,
+}: EmailVerifyPanelProps) {
   const [code, setCode] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [devCode, setDevCode] = useState<string | null>(initialDevCode)
 
   const verify = useMutation({
     mutationFn: () => endpoints.auth.verifyEmail(email.trim(), code.trim()),
@@ -50,7 +59,10 @@ export function EmailVerifyPanel({ email, emailSent = true, onVerified, onBack }
 
   const resend = useMutation({
     mutationFn: () => endpoints.auth.resendVerification(email.trim()),
-    onSuccess: (data) => setError(data.email_sent ? null : data.message),
+    onSuccess: (data) => {
+      if (data.dev_code) setDevCode(data.dev_code)
+      setError(data.email_sent ? null : data.message)
+    },
     onError: (err) => setError(parseApiError(err, "Could not resend code")),
   })
 
@@ -60,8 +72,13 @@ export function EmailVerifyPanel({ email, emailSent = true, onVerified, onBack }
       <p className="text-center text-sm text-[var(--muted-foreground)]">
         {emailSent
           ? `Enter the 6-digit code sent to ${email}.`
-          : `We could not send email to ${email}. Check SMTP settings or try resend.`}
+          : `Email could not be delivered to ${email}. Use the code below (SMTP may be blocked).`}
       </p>
+      {devCode ? (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-center text-sm">
+          Dev verification code: <span className="font-mono text-lg tracking-widest">{devCode}</span>
+        </div>
+      ) : null}
       <div className="space-y-2">
         <Label htmlFor="verify-code">Verification code</Label>
         <Input
@@ -99,6 +116,11 @@ export function EmailVerifyPanel({ email, emailSent = true, onVerified, onBack }
         </Button>
       )}
       {error && <p className="text-center text-sm text-red-500">{error}</p>}
+      {verify.isSuccess && !error && (
+        <p className="flex items-center justify-center gap-2 text-sm text-emerald-400">
+          <CheckCircle2 className="size-4" /> Verified
+        </p>
+      )}
     </div>
   )
 }

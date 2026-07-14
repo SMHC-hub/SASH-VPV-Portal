@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="500" viewBox="0 0 800 500" font-family="Arial, Helvetica, sans-serif">
+<defs>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L7,3 L0,6 Z" fill="#333333"/>
+  </marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="400" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#1A1A1A">Fig. 7. Inference &amp; Deployment Pipeline</text>
+<rect x="30" y="60" width="110" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="85" y="79" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">XRTECH Scanner</text>
+<text x="85" y="93" text-anchor="middle" font-size="8" fill="#4A4A4A">USB 480×640</text>
+<rect x="160" y="60" width="110" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="215" y="79" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Capture Thread</text>
+<text x="215" y="93" text-anchor="middle" font-size="8" fill="#4A4A4A">get_fresh_frame</text>
+<rect x="290" y="60" width="110" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="345" y="79" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Landmarks</text>
+<text x="345" y="93" text-anchor="middle" font-size="8" fill="#4A4A4A">visibility ≥15%</text>
+<rect x="420" y="60" width="110" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="475" y="79" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">ROI + Enhance</text>
+<text x="475" y="93" text-anchor="middle" font-size="8" fill="#4A4A4A">224×224×3</text>
+<rect x="550" y="60" width="110" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="605" y="79" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">EfficientNet</text>
+<text x="605" y="93" text-anchor="middle" font-size="8" fill="#4A4A4A">+ CBAM embed</text>
+<rect x="680" y="60" width="90" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="725" y="79" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">512-d</text>
+<text x="725" y="93" text-anchor="middle" font-size="8" fill="#4A4A4A">L2 norm</text>
+<line x1="140" y1="85" x2="160" y2="85" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="270" y1="85" x2="290" y2="85" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="400" y1="85" x2="420" y2="85" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="530" y1="85" x2="550" y2="85" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="660" y1="85" x2="680" y2="85" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="80" y="160" width="200" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="180" y="181" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">1:1 Verify</text>
+<text x="180" y="195" text-anchor="middle" font-size="8" fill="#4A4A4A">/api/recognize/verify</text>
+<text x="180" y="206" text-anchor="middle" font-size="8" fill="#4A4A4A">claimed identity check</text>
+<rect x="310" y="160" width="200" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="410" y="181" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">1:N Identify</text>
+<text x="410" y="195" text-anchor="middle" font-size="8" fill="#4A4A4A">/api/recognize/identify</text>
+<text x="410" y="206" text-anchor="middle" font-size="8" fill="#4A4A4A">FAISS gallery search</text>
+<rect x="540" y="160" width="200" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="640" y="181" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Enroll Session</text>
+<text x="640" y="195" text-anchor="middle" font-size="8" fill="#4A4A4A">/api/enroll/session/*</text>
+<text x="640" y="206" text-anchor="middle" font-size="8" fill="#4A4A4A">template storage</text>
+<line x1="400" y1="110" x2="400" y2="155" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="200" y="260" width="400" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="281" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Secure Match</text>
+<text x="400" y="295" text-anchor="middle" font-size="8" fill="#4A4A4A">threshold=0.40 · min_margin=0.06 · CaptureQualityError on fail</text>
+<line x1="200" y1="215" x2="200" y2="255" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="410" y1="215" x2="410" y2="255" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="640" y1="215" x2="640" y2="255" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="100" y="350" width="600" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="371" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">FastAPI Backend + React Portal</text>
+<text x="400" y="385" text-anchor="middle" font-size="8" fill="#4A4A4A">MJPEG stream · audit logs · SQLite · JWT auth</text>
+<line x1="400" y1="315" x2="400" y2="345" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="200" y="430" width="400" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="446" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Dashboard / API Response</text>
+<text x="400" y="460" text-anchor="middle" font-size="8" fill="#4A4A4A">matched · similarity · confidence · latency_ms</text>
+<line x1="400" y1="405" x2="400" y2="425" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="400" y="495" text-anchor="middle" font-size="8" fill="#4A4A4A">deployment.py · recognize.py · enroll.py · matcher/singleton.py</text>
+</svg>

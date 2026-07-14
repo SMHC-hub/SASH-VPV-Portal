@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="420" viewBox="0 0 800 420" font-family="Arial, Helvetica, sans-serif">
+<defs>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L7,3 L0,6 Z" fill="#333333"/>
+  </marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="400" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#1A1A1A">Fig. 1. Data Acquisition Pipeline</text>
+<text x="200" y="52" text-anchor="middle" font-size="8" fill="#4A4A4A">Offline Dataset (SASH-VPV)</text>
+<rect x="40" y="70" width="130" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="105" y="89" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">SASH-VPV Corpus</text>
+<text x="105" y="103" text-anchor="middle" font-size="8" fill="#4A4A4A">2,667 imgs · 122 subjects</text>
+<rect x="200" y="70" width="130" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="265" y="89" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">build_metadata</text>
+<text x="265" y="103" text-anchor="middle" font-size="8" fill="#4A4A4A">metadata.csv</text>
+<rect x="360" y="70" width="130" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="425" y="89" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">tag_visibility</text>
+<text x="425" y="103" text-anchor="middle" font-size="8" fill="#4A4A4A">Frangi tiers</text>
+<rect x="520" y="70" width="130" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="585" y="89" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">split_folds</text>
+<text x="585" y="103" text-anchor="middle" font-size="8" fill="#4A4A4A">5-fold CV</text>
+<line x1="170" y1="95" x2="200" y2="95" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="330" y1="95" x2="360" y2="95" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="490" y1="95" x2="520" y2="95" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="400" y="155" text-anchor="middle" font-size="8" fill="#4A4A4A">Live Capture (XRTECH MagicVein Plus)</text>
+<rect x="80" y="175" width="140" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="150" y="196" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">USB Scanner</text>
+<text x="150" y="210" text-anchor="middle" font-size="8" fill="#4A4A4A">480×640 L8 · 850nm NIR</text>
+<rect x="260" y="175" width="140" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="330" y="196" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">XR_Vein SDK</text>
+<text x="330" y="210" text-anchor="middle" font-size="8" fill="#4A4A4A">ctypes wrapper</text>
+<rect x="440" y="175" width="140" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="510" y="196" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Capture Thread</text>
+<text x="510" y="210" text-anchor="middle" font-size="8" fill="#4A4A4A">15 FPS cache</text>
+<rect x="620" y="175" width="140" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="690" y="196" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Quality Gate</text>
+<text x="690" y="210" text-anchor="middle" font-size="8" fill="#4A4A4A">landmarks + vis≥15%</text>
+<line x1="220" y1="202" x2="260" y2="202" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="400" y1="202" x2="440" y2="202" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="580" y1="202" x2="620" y2="202" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="400" y1="125" x2="400" y2="165" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="300" y="270" width="200" height="50" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="289" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Storage</text>
+<text x="400" y="303" text-anchor="middle" font-size="8" fill="#4A4A4A">data/raw/img · data/users/</text>
+<text x="400" y="314" text-anchor="middle" font-size="8" fill="#4A4A4A">SQLite + templates</text>
+<line x1="400" y1="230" x2="400" y2="265" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="400" y="360" text-anchor="middle" font-size="8" fill="#4A4A4A">Sources: build_metadata.py, xrtech_device.py, device/singleton.py</text>
+</svg>

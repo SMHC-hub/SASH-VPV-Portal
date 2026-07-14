@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from "axios"
+import { getCartSessionId } from "@/lib/cartSession"
 import { useAuthStore } from "@/store/useAuthStore"
 
 /**
@@ -15,6 +16,7 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+  config.headers["X-Session-Id"] = getCartSessionId()
   return config
 })
 
@@ -462,7 +464,7 @@ export interface PalmLoginResponse {
 }
 
 export interface GoogleAuthResponse {
-  status: "authenticated" | "needs_enrollment"
+  status: "authenticated" | "registered" | "needs_enrollment"
   access_token?: string | null
   account_id?: number | null
   email?: string | null
@@ -472,6 +474,7 @@ export interface GoogleAuthResponse {
   role?: string | null
   session_id?: number | null
   register_session_id?: string | null
+  account_created?: boolean
   message?: string | null
 }
 
@@ -556,7 +559,8 @@ export const endpoints = {
           email?: string
           verification_required: boolean
           email_sent: boolean
-        }>("/api/auth/register/customer/start", body)
+          dev_code?: string | null
+        }>("/api/auth/register/customer/start", body, { timeout: 20_000 })
         .then((r) => r.data),
     registerCustomerVerify: (email: string, code: string) =>
       api
@@ -580,10 +584,12 @@ export const endpoints = {
         .then((r) => r.data),
     resendVerification: (email: string) =>
       api
-        .post<{ success: boolean; email_sent: boolean; message: string }>(
-          "/api/auth/resend-verification",
-          { email },
-        )
+        .post<{
+          success: boolean
+          email_sent: boolean
+          message: string
+          dev_code?: string | null
+        }>("/api/auth/resend-verification", { email }, { timeout: 20_000 })
         .then((r) => r.data),
     forgotPassword: (email: string) =>
       api
@@ -632,7 +638,7 @@ export const endpoints = {
       api.get<{ enabled: boolean; client_id?: string | null }>("/api/auth/google/config").then((r) => r.data),
     googleAuth: (credential: string, intent: "login" | "signup") =>
       api
-        .post<GoogleAuthResponse>("/api/auth/google", { credential, intent })
+        .post<GoogleAuthResponse>("/api/auth/google", { credential, intent }, { timeout: 20_000 })
         .then((r) => r.data),
     loginPalm: () =>
       api
@@ -880,6 +886,42 @@ export const endpoints = {
       api
         .post<{ message: string; run_id: number | null }>("/api/admin/training/run")
         .then((r) => r.data),
+    pendingShops: () =>
+      api
+        .get<{ count: number; shops: AdminShopModerationItem[] }>("/api/admin/shops/pending")
+        .then((r) => r.data),
+    shops: (approved?: boolean) =>
+      api
+        .get<{ count: number; shops: AdminShopModerationItem[] }>("/api/admin/shops", {
+          params: approved === undefined ? undefined : { approved },
+        })
+        .then((r) => r.data),
+    approveShop: (id: number) =>
+      api
+        .post<AdminModerationAction>(`/api/admin/shops/${id}/approve`)
+        .then((r) => r.data),
+    rejectShop: (id: number, reason: string) =>
+      api
+        .post<AdminModerationAction>(`/api/admin/shops/${id}/reject`, { reason })
+        .then((r) => r.data),
+    pendingProducts: () =>
+      api
+        .get<{ count: number; products: AdminProductModerationItem[] }>("/api/admin/products/pending")
+        .then((r) => r.data),
+    products: (params?: { approved?: boolean; shop_id?: number }) =>
+      api
+        .get<{ count: number; products: AdminProductModerationItem[] }>("/api/admin/products", {
+          params,
+        })
+        .then((r) => r.data),
+    approveProduct: (id: number) =>
+      api
+        .post<AdminModerationAction>(`/api/admin/products/${id}/approve`)
+        .then((r) => r.data),
+    rejectProduct: (id: number, reason: string) =>
+      api
+        .post<AdminModerationAction>(`/api/admin/products/${id}/reject`, { reason })
+        .then((r) => r.data),
   },
   dashboard: {
     stats: () => api.get<DashboardStats>("/api/dashboard/stats").then((r) => r.data),
@@ -965,4 +1007,352 @@ export const endpoints = {
         .get<RecognitionLogsResponse>("/api/recognize/logs", { params })
         .then((r) => r.data),
   },
+  kioskEnroll: {
+    claim: (sessionCode: string, firstHand: "Left" | "Right" = "Left") =>
+      api
+        .post<{
+          success: boolean
+          session_code: string
+          display_name: string
+          masked_phone?: string | null
+          masked_email?: string | null
+          register_session_id: string
+          expires_at: string
+          message: string
+        }>("/api/palmpay/kiosk/enrollment/claim", {
+          session_code: sessionCode,
+          first_hand: firstHand,
+        })
+        .then((r) => r.data),
+    finish: (sessionCode: string, registerSessionId: string) =>
+      api
+        .post<{
+          success: boolean
+          account_id: number
+          web_account_id: number
+          message: string
+        }>("/api/palmpay/kiosk/enrollment/finish", {
+          session_code: sessionCode,
+          register_session_id: registerSessionId,
+        })
+        .then((r) => r.data),
+  },
+  shop: {
+    categories: () =>
+      api.get<ShopCategoriesResponse>("/api/shop/categories").then((r) => r.data),
+    products: (params?: {
+      category?: string
+      search?: string
+      sort?: string
+      page?: number
+      limit?: number
+    }) =>
+      api.get<ShopProductListResponse>("/api/shop/products", { params }).then((r) => r.data),
+    product: (slug: string) =>
+      api.get<ShopProductDetail>(`/api/shop/products/${slug}`).then((r) => r.data),
+    shops: () => api.get<ShopListResponse>("/api/shop/shops").then((r) => r.data),
+    shop: (slug: string) =>
+      api.get<ShopDetailResponse>(`/api/shop/shops/${slug}`).then((r) => r.data),
+  },
+  cart: {
+    get: () => api.get<CartResponse>("/api/cart").then((r) => r.data),
+    summary: () => api.get<CartResponse>("/api/cart/summary").then((r) => r.data),
+    add: (product_id: number, quantity = 1) =>
+      api.post<CartResponse>("/api/cart/items", { product_id, quantity }).then((r) => r.data),
+    update: (itemId: number, quantity: number) =>
+      api.put<CartResponse>(`/api/cart/items/${itemId}`, { quantity }).then((r) => r.data),
+    remove: (itemId: number) =>
+      api.delete<CartResponse>(`/api/cart/items/${itemId}`).then((r) => r.data),
+    clear: () => api.delete<CartResponse>("/api/cart").then((r) => r.data),
+    merge: (session_id: string) =>
+      api.post<CartResponse>("/api/cart/merge", { session_id }).then((r) => r.data),
+  },
+  checkout: {
+    validate: () =>
+      api.post<CheckoutValidateResponse>("/api/checkout/validate").then((r) => r.data),
+    initiate: () =>
+      api.post<CheckoutInitiateResponse>("/api/checkout/initiate").then((r) => r.data),
+    palmPay: (order_id: number, confidence: number, scan_event_id?: string) =>
+      api
+        .post<CheckoutPalmPayResponse>("/api/checkout/palm-pay", {
+          order_id,
+          confidence,
+          scan_event_id,
+        })
+        .then((r) => r.data),
+    cancel: (orderId: number) =>
+      api.post<{ success: boolean; order_id: number; status: string; message: string }>(
+        `/api/checkout/cancel/${orderId}`,
+      ).then((r) => r.data),
+  },
+  owner: {
+    dashboard: () =>
+      api.get<OwnerDashboardResponse>("/api/owner/dashboard").then((r) => r.data),
+    shop: () => api.get<OwnerShopProfile>("/api/owner/shop").then((r) => r.data),
+    updateShop: (body: {
+      name?: string
+      description?: string | null
+      logo_url?: string | null
+      category?: string | null
+    }) => api.put<OwnerShopProfile>("/api/owner/shop", body).then((r) => r.data),
+    products: (params?: { category?: string; active_only?: boolean }) =>
+      api.get<OwnerProductListResponse>("/api/owner/products", { params }).then((r) => r.data),
+    createProduct: (body: OwnerProductCreate) =>
+      api.post<OwnerProduct>("/api/owner/products", body).then((r) => r.data),
+    updateProduct: (id: number, body: OwnerProductUpdate) =>
+      api.put<OwnerProduct>(`/api/owner/products/${id}`, body).then((r) => r.data),
+    deleteProduct: (id: number) =>
+      api.delete<{ success: boolean; deleted_id: number }>(`/api/owner/products/${id}`).then((r) => r.data),
+  },
+}
+
+// --- Shop / cart / checkout types -------------------------------------------
+
+export interface ShopProductCard {
+  id: number
+  slug: string
+  name: string
+  short_desc?: string | null
+  category?: string | null
+  price_pkr: number
+  stock_qty: number
+  stock_status: string
+  images: unknown[]
+  avg_rating: number
+  review_count: number
+  shop_id: number
+  shop_name: string
+  shop_slug: string
+}
+
+export interface ShopProductDetail extends ShopProductCard {
+  description?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ShopProductListResponse {
+  count: number
+  page: number
+  limit: number
+  total_pages: number
+  products: ShopProductCard[]
+}
+
+export interface ShopCategoriesResponse {
+  count: number
+  categories: { name: string; product_count: number }[]
+}
+
+export interface ShopListResponse {
+  count: number
+  shops: {
+    id: number
+    name: string
+    slug: string
+    description?: string | null
+    logo_url?: string | null
+    category?: string | null
+    product_count: number
+  }[]
+}
+
+export interface ShopDetailResponse {
+  id: number
+  name: string
+  slug: string
+  description?: string | null
+  logo_url?: string | null
+  category?: string | null
+  product_count: number
+  created_at: string
+  products: ShopProductCard[]
+}
+
+export interface CartItem {
+  id: number
+  product_id: number
+  product_slug: string
+  name: string
+  image_url?: string | null
+  quantity: number
+  unit_price: number
+  price_at_add: number
+  line_total: number
+  stock_qty: number
+  shop_id: number
+  shop_name?: string | null
+}
+
+export interface CartResponse {
+  cart_id: number
+  user_id?: number | null
+  session_id?: string | null
+  item_count: number
+  items: CartItem[]
+  subtotal_pkr: number
+  platform_fee_pkr: number
+  total_pkr: number
+  warnings: string[]
+  updated_at: string
+}
+
+export interface CheckoutValidateResponse {
+  logged_in: boolean
+  palm_enrolled: boolean
+  balance_sufficient: boolean
+  wallet_balance: number
+  cart_total: number
+  shortfall?: number | null
+  action_required: string
+  item_count: number
+  warnings: string[]
+}
+
+export interface CheckoutInitiateResponse {
+  order_id: number
+  order_number: string
+  status: string
+  payment_status: string
+  subtotal_pkr: number
+  platform_fee_pkr: number
+  total_pkr: number
+  expires_at: string
+  items_summary: { product_name: string; quantity: number; line_total: number; shop_id?: number }[]
+  confidence_required: number
+}
+
+export interface CheckoutPalmPayResponse {
+  success: boolean
+  already_paid: boolean
+  order_id: number
+  order_number: string
+  status: string
+  payment_status: string
+  total_pkr: number
+  subtotal_pkr: number
+  platform_fee_pkr: number
+  palm_confidence?: number | null
+  transaction_id?: number | null
+  new_balance_pkr?: number | null
+  items: unknown[]
+  message: string
+}
+
+export interface OwnerDashboardResponse {
+  shop_id: number
+  shop_name: string
+  is_approved: boolean
+  today_sales_pkr: number
+  today_orders: number
+  products_listed: number
+  products_active: number
+  products_pending_approval: number
+  low_stock_threshold: number
+  low_stock: { id: number; name: string; stock_qty: number; category?: string | null }[]
+  recent_orders: unknown[]
+  revenue_series: unknown[]
+}
+
+export interface OwnerShopProfile {
+  id: number
+  owner_user_id: number
+  name: string
+  slug: string
+  description?: string | null
+  logo_url?: string | null
+  category?: string | null
+  commission_rate: number
+  is_approved: boolean
+  approved_at?: string | null
+  rejection_reason?: string | null
+  wallet_id?: number | null
+  created_at: string
+}
+
+export interface OwnerProduct {
+  id: number
+  shop_id: number
+  name: string
+  slug: string
+  description?: string | null
+  short_desc?: string | null
+  category?: string | null
+  price_pkr: number
+  stock_qty: number
+  images: unknown[]
+  avg_rating: number
+  review_count: number
+  is_active: boolean
+  is_approved: boolean
+  rejection_reason?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface OwnerProductListResponse {
+  count: number
+  products: OwnerProduct[]
+}
+
+export interface OwnerProductCreate {
+  name: string
+  category?: string | null
+  short_desc?: string | null
+  description?: string | null
+  price_pkr: number
+  stock_qty?: number
+  images?: unknown[]
+  is_active?: boolean
+}
+
+export type OwnerProductUpdate = Partial<OwnerProductCreate>
+
+export interface AdminShopModerationItem {
+  id: number
+  owner_user_id: number
+  owner_email?: string | null
+  owner_name?: string | null
+  name: string
+  slug: string
+  description?: string | null
+  logo_url?: string | null
+  category?: string | null
+  commission_rate: number
+  is_approved: boolean
+  approved_at?: string | null
+  rejection_reason?: string | null
+  wallet_id?: number | null
+  created_at: string
+  product_count: number
+}
+
+export interface AdminProductModerationItem {
+  id: number
+  shop_id: number
+  shop_name?: string | null
+  name: string
+  slug: string
+  description?: string | null
+  short_desc?: string | null
+  category?: string | null
+  price_pkr: number
+  stock_qty: number
+  images: unknown[]
+  avg_rating: number
+  review_count: number
+  is_active: boolean
+  is_approved: boolean
+  rejection_reason?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface AdminModerationAction {
+  success: boolean
+  id: number
+  is_approved: boolean
+  rejection_reason?: string | null
+  message: string
 }

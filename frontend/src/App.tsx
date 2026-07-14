@@ -10,7 +10,10 @@ import {
   EmployeePublicRoute,
   EmployeeRoute,
   PublicOnlyRoute,
+  ShopOwnerPublicRoute,
+  ShopOwnerRoute,
 } from "@/components/ProtectedRoute"
+import { OwnerShell } from "@/components/owner/OwnerShell"
 import { Customers } from "@/pages/Customers"
 import { Dashboard } from "@/pages/Dashboard"
 import { Enrollment } from "@/pages/Enrollment"
@@ -18,10 +21,12 @@ import { Recognition } from "@/pages/Recognition"
 import { Identities } from "@/pages/Identities"
 import { Employees } from "@/pages/Employees"
 import { Logs } from "@/pages/Logs"
+import { AdminMarketplacePage } from "@/pages/AdminMarketplacePage"
 import { AdminSettingsPage } from "@/pages/AdminSettingsPage"
 import { Login } from "@/pages/Login"
 import { Signup } from "@/pages/Signup"
 import { AuthKiosk } from "@/pages/AuthKiosk"
+import { KioskEnrollPage } from "@/pages/KioskEnrollPage"
 import { EmployeeLogin } from "@/pages/employee/EmployeeLogin"
 import { EmployeeSignup } from "@/pages/employee/EmployeeSignup"
 import { EmployeeDashboardPage } from "@/pages/employee/EmployeeDashboardPage"
@@ -39,6 +44,15 @@ import { UserEnrollPage } from "@/pages/user/UserEnrollPage"
 import { UserLogin } from "@/pages/user/UserLogin"
 import { UserScanPage } from "@/pages/user/UserScanPage"
 import { UserSignup } from "@/pages/user/UserSignup"
+import { CartPage } from "@/pages/shop/CartPage"
+import { CheckoutPage } from "@/pages/shop/CheckoutPage"
+import { ProductDetailPage } from "@/pages/shop/ProductDetailPage"
+import { ShopPage } from "@/pages/shop/ShopPage"
+import { OwnerLoginPage } from "@/pages/owner/OwnerLoginPage"
+import { OwnerDashboardPage } from "@/pages/owner/OwnerDashboardPage"
+import { OwnerProductsPage } from "@/pages/owner/OwnerProductsPage"
+import { OwnerShopPage } from "@/pages/owner/OwnerShopPage"
+import { OwnerSettingsPage } from "@/pages/owner/OwnerSettingsPage"
 
 function App() {
   return (
@@ -52,6 +66,17 @@ function App() {
           <Route path="/solutions" element={<SolutionsPage />} />
           <Route path="/contact" element={<ContactPage />} />
           <Route path="/faq" element={<FaqRedirect />} />
+          <Route path="/member/shop" element={<ShopPage />} />
+          <Route path="/member/shop/:slug" element={<ProductDetailPage />} />
+          <Route path="/member/cart" element={<CartPage />} />
+          <Route
+            path="/member/checkout"
+            element={
+              <CustomerRoute>
+                <CheckoutPage />
+              </CustomerRoute>
+            }
+          />
           <Route
             path="/member/enrollment"
             element={
@@ -119,6 +144,7 @@ function App() {
           }
         />
         <Route path="/kiosk" element={<AuthKiosk />} />
+        <Route path="/kiosk/enroll" element={<KioskEnrollPage />} />
 
         <Route
           element={
@@ -133,8 +159,31 @@ function App() {
           <Route path="/identities" element={<Identities />} />
           <Route path="/employees" element={<Employees />} />
           <Route path="/customers" element={<Customers />} />
+          <Route path="/marketplace" element={<AdminMarketplacePage />} />
           <Route path="/logs" element={<Logs />} />
           <Route path="/settings" element={<AdminSettingsPage />} />
+        </Route>
+
+        <Route
+          path="/owner/login"
+          element={
+            <ShopOwnerPublicRoute>
+              <OwnerLoginPage />
+            </ShopOwnerPublicRoute>
+          }
+        />
+
+        <Route
+          element={
+            <ShopOwnerRoute>
+              <OwnerShell />
+            </ShopOwnerRoute>
+          }
+        >
+          <Route path="/owner/dashboard" element={<OwnerDashboardPage />} />
+          <Route path="/owner/products" element={<OwnerProductsPage />} />
+          <Route path="/owner/shop" element={<OwnerShopPage />} />
+          <Route path="/owner/settings" element={<OwnerSettingsPage />} />
         </Route>
 
         <Route

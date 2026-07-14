@@ -1,0 +1,269 @@
+{
+  "project": {
+    "name": "SASH-VPV Palm Vein Recognition System",
+    "institution": "National University of Technology (NUTECH), Islamabad",
+    "dataset_source": "SASH-VPV (Kaggle) — subcutaneous vascular palm-vein corpus"
+  },
+  "dataset": {
+    "name": "SASH-VPV",
+    "subjects": 122,
+    "classes": 244,
+    "class_definition": "(subject_id, hand) where hand ∈ {Left, Right}",
+    "total_samples": 2667,
+    "image_format": "480×640 grayscale PNG (8-bit)",
+    "sensor": "XRTECH MagicVein Plus, 850 nm NIR",
+    "capture_distance_cm": "3–8",
+    "directory_structure": "data/raw/img/<subject_id>/<Left|Right>/<filename>.png",
+    "metadata_csv": "data/processed/metadata.csv",
+    "visibility_csv": "data/processed/visibility_tags.csv",
+    "cv_folds_csv": "data/processed/cv_folds.csv",
+    "split_methods": {
+      "open_set_cv": {
+        "type": "5-fold StratifiedKFold at class level",
+        "n_splits": 5,
+        "random_state": 42,
+        "stratify_on": "majority visibility_level per class",
+        "source": "src/palm_vein/split_folds.py"
+      },
+      "training_holdout": {
+        "type": "within-class image holdout",
+        "n_holdout_per_class": 2,
+        "rule": "last 2 images by sorted index → validation",
+        "source": "src/palm_vein/dataset.py"
+      },
+      "production_training": {
+        "held_out_fold": null,
+        "classes_used": 244,
+        "source": "scripts/train_production.py"
+      },
+      "open_set_evaluation": {
+        "held_out_fold": 0,
+        "classes_evaluated": 49,
+        "images_evaluated": 547,
+        "source": "src/palm_vein/evaluate.py"
+      }
+    }
+  },
+  "data_acquisition": {
+    "offline_dataset": [
+      "SASH-VPV corpus ingestion from data/raw/img",
+      "build_metadata.py → metadata.csv",
+      "tag_visibility.py → visibility_tags.csv (Frangi vesselness tiers)",
+      "split_folds.py → cv_folds.csv"
+    ],
+    "live_capture": [
+      "XRTECH MagicVein Plus USB (VID 0xA7A9, PID 0x0620)",
+      "XR_Vein_GetStdVeinImage → 480×640 L8 raw frame",
+      "Background capture thread @ 15 FPS (backend/device/singleton.py)",
+      "Quality gate: landmark detection + palm visibility ≥ 15%"
+    ],
+    "source_files": [
+      "src/xrtech/xrtech_device.py",
+      "backend/device/singleton.py",
+      "src/palm_vein/build_metadata.py"
+    ]
+  },
+  "preprocessing": {
+    "training_order": [
+      "cv2.imread (grayscale)",
+      "extract_roi → 224×224 (landmark-based affine warp)",
+      "augment() [train only]",
+      "enhance() → 224×224×3",
+      "to_tensor() → (3, 224, 224)"
+    ],
+    "deployment_order": [
+      "grayscale frame (file or 480×640 scanner raw)",
+      "find_landmarks() + visibility gate",
+      "extract_roi() → 224×224",
+      "enhance() → 224×224×3",
+      "model → 512-d L2-normalized embedding"
+    ],
+    "segment_and_landmarks": {
+      "steps": [
+        "Otsu threshold",
+        "Morphological close/open (9×9)",
+        "Largest contour = hand",
+        "Radial distance profile + peak/valley detection",
+        "PCA finger-side restriction",
+        "Palm center via distance transform"
+      ],
+      "file": "src/palm_vein/segment_and_landmarks.py"
+    },
+    "roi_extraction": {
+      "target_landmark_distance_px": 110,
+      "roi_size": 224,
+      "operations": ["rotation", "scale", "translation", "center crop"],
+      "file": "src/palm_vein/roi_extraction.py"
+    },
+    "vein_enhancement": {
+      "channels": [
+        "Ch0: CLAHE (clip=1.0, tile=16×16) + min-max normalize",
+        "Ch1: Frangi vesselness (σ=1–3, black_ridges) + global scale 0.6",
+        "Ch2: Gabor bank (4 orientations) + global scale 0.055"
+      ],
+      "filters": ["medianBlur(3) [optional adversarial]", "bilateral d=7"],
+      "file": "src/palm_vein/vein_enhancement.py"
+    }
+  },
+  "augmentation": {
+    "applied_when": "PalmVeinDataset train=True, before enhance()",
+    "methods": [
+      "rotate_translate_scale: rot ±10°, trans 5%, scale 0.92–1.08",
+      "brightness: ×0.85–1.15",
+      "contrast: factor 0.85–1.15 about mean",
+      "gaussian_noise: σ 2–5"
+    ],
+    "composition": "1–3 ops randomly per sample, without replacement",
+    "excluded": ["horizontal flip", "vertical flip"],
+    "file": "src/palm_vein/augmentation.py"
+  },
+  "architecture": {
+    "class": "PalmVeinEmbeddingNet",
+    "file": "src/palm_vein/model.py",
+    "backbone": {
+      "name": "efficientnet_b0",
+      "library": "timm",
+      "pretrained": "ImageNet",
+      "mode": "features_only=True",
+      "stage_channels": [16, 24, 40, 112, 320]
+    },
+    "custom_layers": {
+      "cbam_stage3": {"channels": 112, "reduction": 16},
+      "cbam_stage4": {"channels": 320, "reduction": 16},
+      "pooling": "Global average pool on CBAM-refined stage3 + stage4",
+      "concat_dim": 432,
+      "dropout": 0.4,
+      "embedding_head": "Linear(432 → 512)",
+      "normalization": "L2 normalize (p=2, dim=1)"
+    },
+    "input_shape": [3, 224, 224],
+    "output_dim": 512,
+    "training_classifier": "ArcFaceLoss (separate module, not used at inference)"
+  },
+  "training": {
+    "file": "src/palm_vein/train.py",
+    "entry_points": {
+      "production": "scripts/train_production.py — 60 epochs, batch 16, all 244 classes",
+      "validation": "scripts/train_validation.py — 60 epochs, fold 0 held out",
+      "smoke": "scripts/train.py — 2 epochs, batch 4"
+    },
+    "optimizer": {
+      "name": "Adam",
+      "learning_rate": 0.001,
+      "finetune_learning_rate": 0.0001,
+      "weight_decay": 0.0001
+    },
+    "loss": {
+      "name": "ArcFace + cross_entropy",
+      "embed_dim": 512,
+      "scale_s": 64.0,
+      "margin_m": 0.5,
+      "label_smoothing": 0.1,
+      "file": "src/palm_vein/arcface_loss.py"
+    },
+    "epochs_production": 60,
+    "batch_size": 16,
+    "scheduler": "NONE",
+    "early_stopping": {
+      "metric": "validation EER (seen-class holdout)",
+      "patience": 5
+    },
+    "checkpoint_production": "models/checkpoints/production/checkpoint_production_full.pt",
+    "anti_overfitting": ["dropout 0.4", "weight decay", "label smoothing", "augmentation", "early stopping"]
+  },
+  "evaluation": {
+    "file": "src/palm_vein/evaluate.py",
+    "protocol": "open-set on held-out fold 0 (49 classes, 547 images)",
+    "matching": "cosine similarity (dot product on L2-normalized embeddings)",
+    "metrics_computed": [
+      "EER", "ROC-AUC", "GAR@FAR1%", "GAR@FAR0.1%", "Rank-1", "Rank-5"
+    ],
+    "threshold": {
+      "default": 0.40,
+      "derivation": "EER crossover on held-out fold (FAR=FNR≈0.2049)",
+      "min_margin": 0.06
+    },
+    "reported_values": {
+      "source": "docs/FINAL_SUMMARY.md",
+      "seen_class_proxy": {
+        "eer": 0.024,
+        "roc_auc": 0.991,
+        "gar_at_far_1pct": 0.975,
+        "rank1": 0.925,
+        "note": "40-class subset, 10 epochs, CPU — training-time proxy only"
+      },
+      "open_set_held_out_fold0": {
+        "eer": 0.204,
+        "roc_auc": 0.877,
+        "gar_at_far_1pct": 0.481,
+        "rank1": 0.498,
+        "rank5": 0.703,
+        "note": "Production checkpoint, fold-0 unseen classes"
+      }
+    },
+    "outputs": {
+      "metrics_csv": "outputs/metrics/metrics.csv",
+      "figures": ["similarity_distribution.png", "tsne_umap.png"]
+    }
+  },
+  "deployment": {
+    "core": "src/palm_vein/deployment.py — PalmVeinBiometricSystem",
+    "template_store": "FAISS IndexFlatIP over 512-d L2-normalized embeddings",
+    "quality_gates": {
+      "min_palm_visibility_ratio": 0.15,
+      "requires_landmark_pair": true,
+      "exception": "CaptureQualityError"
+    },
+    "flows": {
+      "enrollment": [
+        "Capture → landmarks → ROI → enhance → embed",
+        "Average embeddings, re-L2-normalize",
+        "FAISS index.add"
+      ],
+      "verification_1to1": [
+        "Probe embed → cosine vs enrolled template → threshold"
+      ],
+      "identification_1toN": [
+        "Probe embed → FAISS search top-k → threshold + margin"
+      ]
+    },
+    "backend": {
+      "framework": "FastAPI + uvicorn",
+      "matcher": "backend/matcher/singleton.py",
+      "checkpoint": "checkpoint_production_full.pt",
+      "routes": {
+        "enroll": "/api/enroll/session/*",
+        "recognize": "/api/recognize/verify, /api/recognize/identify",
+        "stream": "/api/stream (MJPEG)",
+        "device": "/api/device/*"
+      },
+      "scanner_integration": "backend/device/singleton.py — XRTECH SDK ctypes",
+      "frontend": "React 19 + Vite (admin/member portals)"
+    },
+    "inference_pipeline": [
+      "XRTECH scanner 480×640 raw",
+      "get_fresh_frame()",
+      "embed_png_bytes() → same ROI/enhance/model path",
+      "secure_match (threshold + top-1/top-2 margin)",
+      "API response + audit log"
+    ]
+  },
+  "contributions": [
+    "Custom SASH-VPV NIR palm-vein dataset (2,667 images, 122 subjects, 244 hand-classes)",
+    "PCA-axis rotation-invariant landmark detection with finger-valley pairing",
+    "Affine ROI normalization (110 px inter-landmark scale, 224×224)",
+    "Three-channel vein representation: CLAHE + Frangi + Gabor with calibrated global scaling",
+    "Biometric-safe augmentation (no flips) applied pre-enhancement",
+    "EfficientNet-B0 + dual CBAM + multi-scale 512-d embedding",
+    "ArcFace metric learning with label smoothing and anti-overfitting stack",
+    "Visibility-stratified 5-fold class-level CV for open-set evaluation",
+    "Capture quality gating before neural inference",
+    "FAISS cosine gallery with threshold/margin secure matching",
+    "Full-stack live enrollment/verify/identify with XRTECH USB scanner"
+  ],
+  "unknowns": [
+    "Exact per-class image count distribution (requires running build_metadata.py)",
+    "metrics.csv on disk (run scripts/evaluate.py to regenerate)",
+    "Production checkpoint best epoch number (stored inside .pt file)"
+  ]
+}

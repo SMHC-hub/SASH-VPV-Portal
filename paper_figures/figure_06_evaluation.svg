@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" font-family="Arial, Helvetica, sans-serif">
+<defs>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L7,3 L0,6 Z" fill="#333333"/>
+  </marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="400" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#1A1A1A">Fig. 6. Evaluation Pipeline (Open-Set)</text>
+<rect x="50" y="55" width="130" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="115" y="71" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Held-out Fold 0</text>
+<text x="115" y="85" text-anchor="middle" font-size="8" fill="#4A4A4A">49 classes · 547 imgs</text>
+<rect x="210" y="55" width="130" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="275" y="71" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Preprocess</text>
+<text x="275" y="85" text-anchor="middle" font-size="8" fill="#4A4A4A">ROI + enhance</text>
+<rect x="370" y="55" width="130" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="435" y="71" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Embed (512-d)</text>
+<text x="435" y="85" text-anchor="middle" font-size="8" fill="#4A4A4A">L2 normalized</text>
+<rect x="530" y="55" width="130" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="595" y="71" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Pair Scores</text>
+<text x="595" y="85" text-anchor="middle" font-size="8" fill="#4A4A4A">genuine vs impostor</text>
+<rect x="690" y="55" width="80" height="45" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="730" y="77" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Metrics</text>
+<line x1="180" y1="77" x2="210" y2="77" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="340" y1="77" x2="370" y2="77" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="500" y1="77" x2="530" y2="77" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<line x1="660" y1="77" x2="690" y2="77" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<text x="80" y="140" font-size="10" font-weight="bold" fill="#1A1A1A">Open-Set Results (docs/FINAL_SUMMARY.md):</text>
+<rect x="60" y="160" width="680" height="24" fill="#F0F0F0" stroke="#1A1A1A" stroke-width="0.5"/>
+<text x="80" y="176" font-size="8" fill="#1A1A1A">EER</text>
+<text x="220" y="176" font-size="8" font-weight="bold" fill="#1A1A1A">0.204</text>
+<text x="320" y="176" font-size="8" fill="#4A4A4A">Equal error rate</text>
+<rect x="60" y="188" width="680" height="24" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="0.5"/>
+<text x="80" y="204" font-size="8" fill="#1A1A1A">ROC-AUC</text>
+<text x="220" y="204" font-size="8" font-weight="bold" fill="#1A1A1A">0.877</text>
+<text x="320" y="204" font-size="8" fill="#4A4A4A">Discrimination</text>
+<rect x="60" y="216" width="680" height="24" fill="#F0F0F0" stroke="#1A1A1A" stroke-width="0.5"/>
+<text x="80" y="232" font-size="8" fill="#1A1A1A">GAR@FAR1%</text>
+<text x="220" y="232" font-size="8" font-weight="bold" fill="#1A1A1A">0.481</text>
+<text x="320" y="232" font-size="8" fill="#4A4A4A">Security operating point</text>
+<rect x="60" y="244" width="680" height="24" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="0.5"/>
+<text x="80" y="260" font-size="8" fill="#1A1A1A">Rank-1</text>
+<text x="220" y="260" font-size="8" font-weight="bold" fill="#1A1A1A">0.498</text>
+<text x="320" y="260" font-size="8" fill="#4A4A4A">Identification</text>
+<rect x="60" y="272" width="680" height="24" fill="#F0F0F0" stroke="#1A1A1A" stroke-width="0.5"/>
+<text x="80" y="288" font-size="8" fill="#1A1A1A">Rank-5</text>
+<text x="220" y="288" font-size="8" font-weight="bold" fill="#1A1A1A">0.703</text>
+<text x="320" y="288" font-size="8" fill="#4A4A4A">Identification</text>
+<rect x="60" y="300" width="680" height="24" fill="#FFFFFF" stroke="#1A1A1A" stroke-width="0.5"/>
+<text x="80" y="316" font-size="8" fill="#1A1A1A">Threshold</text>
+<text x="220" y="316" font-size="8" font-weight="bold" fill="#1A1A1A">0.40</text>
+<text x="320" y="316" font-size="8" fill="#4A4A4A">EER crossover (deploy)</text>
+<rect x="60" y="350" width="680" height="55" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="400" y="371" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Seen-Class Proxy (training only — NOT open-set)</text>
+<text x="400" y="385" text-anchor="middle" font-size="8" fill="#4A4A4A">EER=0.024 · AUC=0.991 · Rank-1=0.925 (40-class subset)</text>
+<text x="400" y="440" text-anchor="middle" font-size="8" fill="#4A4A4A">Outputs: outputs/metrics/metrics.csv · similarity_distribution.png · tsne_umap.png</text>
+<text x="400" y="458" text-anchor="middle" font-size="8" fill="#4A4A4A">src/palm_vein/evaluate.py — cosine similarity, ArcFace head NOT used at eval</text>
+</svg>

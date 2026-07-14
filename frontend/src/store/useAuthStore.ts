@@ -22,6 +22,7 @@ interface AuthState {
   isAdmin: () => boolean
   isEmployee: () => boolean
   isCustomer: () => boolean
+  isShopOwner: () => boolean
 }
 
 export const useAuthStore = create<AuthState>()(
@@ -46,6 +47,7 @@ export const useAuthStore = create<AuthState>()(
       isAdmin: () => get().user?.role === "admin",
       isEmployee: () => get().user?.role === "employee",
       isCustomer: () => get().user?.role === "customer",
+      isShopOwner: () => get().user?.role === "shop_owner",
     }),
     { name: "palmvein-auth" },
   ),

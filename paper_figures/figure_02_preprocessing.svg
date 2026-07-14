@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="520" viewBox="0 0 800 520" font-family="Arial, Helvetica, sans-serif">
+<defs>
+  <marker id="arrow" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+    <path d="M0,0 L7,3 L0,6 Z" fill="#333333"/>
+  </marker>
+</defs>
+<rect width="100%" height="100%" fill="#FFFFFF"/>
+<text x="400" y="28" text-anchor="middle" font-size="13" font-weight="bold" fill="#1A1A1A">Fig. 2. Data Preprocessing Pipeline</text>
+<rect x="55" y="60" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="132" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Grayscale Input</text>
+<text x="132" y="92" text-anchor="middle" font-size="8" fill="#4A4A4A">PNG or 480×640 raw</text>
+<line x1="210" y1="84" x2="228" y2="84" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="228" y="60" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="305" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Otsu + Morphology</text>
+<text x="305" y="92" text-anchor="middle" font-size="8" fill="#4A4A4A">hand segmentation</text>
+<line x1="383" y1="84" x2="401" y2="84" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="401" y="60" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="478" y="78" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Landmark Detection</text>
+<text x="478" y="92" text-anchor="middle" font-size="8" fill="#4A4A4A">valleys + palm center</text>
+<line x1="478" y1="108" x2="478" y2="134" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="55" y="134" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="132" y="152" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Affine ROI Warp</text>
+<text x="132" y="166" text-anchor="middle" font-size="8" fill="#4A4A4A">110px scale → 224×224</text>
+<line x1="210" y1="158" x2="228" y2="158" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="228" y="134" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="305" y="152" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">CLAHE</text>
+<text x="305" y="166" text-anchor="middle" font-size="8" fill="#4A4A4A">clip=1.0, tile 16×16</text>
+<line x1="383" y1="158" x2="401" y2="158" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="401" y="134" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="478" y="152" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Bilateral Filter</text>
+<text x="478" y="166" text-anchor="middle" font-size="8" fill="#4A4A4A">d=7</text>
+<line x1="478" y1="182" x2="478" y2="208" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="55" y="208" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="132" y="226" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Frangi Vesselness</text>
+<text x="132" y="240" text-anchor="middle" font-size="8" fill="#4A4A4A">σ=1–3, scale 0.6</text>
+<line x1="210" y1="232" x2="228" y2="232" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="228" y="208" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="305" y="226" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">Gabor Bank</text>
+<text x="305" y="240" text-anchor="middle" font-size="8" fill="#4A4A4A">4 θ, scale 0.055</text>
+<line x1="383" y1="232" x2="401" y2="232" stroke="#333333" stroke-width="1.2" marker-end="url(#arrow)"/>
+<rect x="401" y="208" width="155" height="48" rx="4" fill="#F8F8F8" stroke="#1A1A1A" stroke-width="1.2"/>
+<text x="478" y="226" text-anchor="middle" font-size="10" font-weight="bold" fill="#1A1A1A">3-Channel Stack</text>
+<text x="478" y="240" text-anchor="middle" font-size="8" fill="#4A4A4A">224×224×3 [0,1]</text>
+<text x="400" y="500" text-anchor="middle" font-size="8" fill="#4A4A4A">segment_and_landmarks.py → roi_extraction.py → vein_enhancement.py</text>
+</svg>

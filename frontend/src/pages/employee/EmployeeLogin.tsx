@@ -44,6 +44,10 @@ export function EmployeeLogin() {
         setError("Member accounts must use the member portal at /user/login")
         return
       }
+      if (role === "shop_owner") {
+        setError("Shop owner accounts must use the owner portal at /owner/login")
+        return
+      }
       setAuth(data.access_token, { ...data.user, role: "employee" })
       navigate("/employee/dashboard")
     },
@@ -73,6 +77,10 @@ export function EmployeeLogin() {
       }
       if (role === "customer") {
         setError("Member palm matched — use the member portal at /user/login")
+        return
+      }
+      if (role === "shop_owner") {
+        setError("Shop owner palm matched — use the owner portal at /owner/login")
         return
       }
       setAuth(data.access_token, {

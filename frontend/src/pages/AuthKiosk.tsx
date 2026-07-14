@@ -62,6 +62,9 @@ export function AuthKiosk() {
       <header className="flex items-center justify-between px-8 py-6">
         <PalmVeinLogo variant="header" size={30} />
         <div className="flex gap-2">
+          <Button variant="outline" className="border-white/15" asChild>
+            <Link to="/kiosk/enroll">Mobile enroll</Link>
+          </Button>
           {!isAuthenticated && (
             <>
               <Button variant="outline" className="border-white/15" asChild>
@@ -73,7 +76,7 @@ export function AuthKiosk() {
             </>
           )}
           {isAuthenticated && (
-            <Button className="btn-brand " asChild>
+            <Button className="btn-brand" asChild>
               <Link to="/dashboard">Dashboard</Link>
             </Button>
           )}

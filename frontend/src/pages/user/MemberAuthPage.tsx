@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 
 import { useMutation, useQuery } from "@tanstack/react-query"
 
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { endpoints } from "@/lib/api"
+import { mergeCartAfterLogin } from "@/lib/shopUtils"
 import { cn } from "@/lib/utils"
 import { useAuthStore } from "@/store/useAuthStore"
 
@@ -43,12 +44,14 @@ function applyGoogleAuth(
     full_name?: string | null
     dataset_id?: string | null
     dataset_name?: string | null
+    role?: string | null
     session_id?: number | null
     message?: string | null
   },
   setAuth: ReturnType<typeof useAuthStore.getState>["setAuth"],
   navigate: ReturnType<typeof useNavigate>,
   onError: (msg: string) => void,
+  redirectTo: string,
 ) {
   if (data.status === "authenticated" && data.access_token) {
     setAuth(data.access_token, {
@@ -57,20 +60,25 @@ function applyGoogleAuth(
       full_name: data.full_name!,
       dataset_id: data.dataset_id ?? "",
       dataset_name: data.dataset_name!,
-      role: "customer",
+      role: data.role ?? "customer",
       session_id: data.session_id ?? null,
     })
-    navigate("/")
+    void mergeCartAfterLogin()
+    navigate(redirectTo)
     return
   }
   onError(data.message ?? "Google sign-in failed")
 }
 
+const USERNAME_RE = /^[a-zA-Z0-9_]{3,32}$/
+
 export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const setAuth = useAuthStore((s) => s.setAuth)
   const [mode, setMode] = useState<AuthMode>(initialMode)
   const [signupStep, setSignupStep] = useState<SignupStep>("details")
+  const [authNotice, setAuthNotice] = useState<string | null>(null)
 
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
@@ -86,7 +94,16 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [captchaAnswer, setCaptchaAnswer] = useState("")
   const [emailSent, setEmailSent] = useState(true)
+  const [signupDevCode, setSignupDevCode] = useState<string | null>(null)
   const [signupError, setSignupError] = useState<string | null>(null)
+
+  const postAuthPath = () => {
+    const from = (location.state as { from?: string } | null)?.from
+    if (typeof from === "string" && from.startsWith("/") && !from.startsWith("/user/")) {
+      return from
+    }
+    return "/"
+  }
 
   const handleAuthSuccess = (accessToken: string, user: {
     account_id: number
@@ -97,8 +114,9 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
     role?: string
     session_id?: number | null
   }) => {
-    setAuth(accessToken, { ...user, role: "customer" })
-    navigate("/")
+    setAuth(accessToken, { ...user, role: user.role ?? "customer" })
+    void mergeCartAfterLogin()
+    navigate(postAuthPath())
   }
 
   const captcha = useQuery({ queryKey: ["captcha"], queryFn: endpoints.auth.captcha })
@@ -106,6 +124,24 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
   useEffect(() => {
     setMode(initialMode)
   }, [initialMode])
+
+  useEffect(() => {
+    const state = location.state as { notice?: string; email?: string; from?: string } | null
+    const notice = state?.notice
+    const from = state?.from
+    if (typeof notice === "string" && notice.trim()) {
+      setAuthNotice(notice.trim())
+    }
+    if (typeof state?.email === "string" && state.email.includes("@")) {
+      setEmail(state.email)
+    }
+    if (notice || state?.email) {
+      navigate(location.pathname, {
+        replace: true,
+        state: from ? { from } : {},
+      })
+    }
+  }, [location.state, location.pathname, navigate])
 
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedEmail(email.trim().toLowerCase()), 400)
@@ -129,21 +165,22 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
   const goLogin = () => {
     if (mode === "login") return
     setMode("login")
-    navigate("/user/login", { replace: true })
+    const from = (location.state as { from?: string } | null)?.from
+    navigate("/user/login", { replace: true, state: from ? { from } : {} })
   }
 
   const goSignup = () => {
     if (mode === "signup" && signupStep === "details") return
     if (signupStep !== "details") return
     setMode("signup")
-    navigate("/user/signup", { replace: true })
+    const from = (location.state as { from?: string } | null)?.from
+    navigate("/user/signup", { replace: true, state: from ? { from } : {} })
   }
 
   const passwordLogin = useMutation({
     mutationFn: () => endpoints.auth.loginCustomer(email, password),
     onSuccess: (data) => {
-      setAuth(data.access_token, { ...data.user, role: "customer" })
-      navigate("/")
+      handleAuthSuccess(data.access_token, { ...data.user, role: data.user.role ?? "customer" })
     },
     onError: (err) => {
       const msg = parseApiError(err, "Invalid email or password")
@@ -164,16 +201,15 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
         setLoginError(data.message ?? "Palm not recognized")
         return
       }
-      setAuth(data.access_token, {
+      handleAuthSuccess(data.access_token, {
         account_id: data.account_id!,
         email: data.email!,
         full_name: data.full_name!,
         dataset_id: data.dataset_id ?? "",
         dataset_name: data.dataset_name!,
-        role: "customer",
+        role: data.role ?? "customer",
         session_id: data.session_id ?? null,
       })
-      navigate("/")
     },
     onError: () => setLoginError("Palm login failed"),
   })
@@ -181,7 +217,7 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
   const googleLogin = useMutation({
     mutationFn: (credential: string) => endpoints.auth.googleAuth(credential, "login"),
     onSuccess: (data) => {
-      applyGoogleAuth(data, setAuth, navigate, setLoginError)
+      applyGoogleAuth(data, setAuth, navigate, setLoginError, postAuthPath())
     },
     onError: (err) => setLoginError(parseApiError(err, "Google sign-in failed")),
   })
@@ -198,10 +234,17 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
       }),
     onSuccess: (data) => {
       setEmailSent(data.email_sent)
+      setSignupDevCode(data.dev_code ?? null)
       setSignupStep("verify")
       setSignupError(null)
+      setCaptchaAnswer("")
+      void captcha.refetch()
     },
-    onError: (err) => setSignupError(parseApiError(err, "Registration failed")),
+    onError: (err) => {
+      setSignupError(parseApiError(err, "Registration failed"))
+      setCaptchaAnswer("")
+      void captcha.refetch()
+    },
   })
 
   const inVerification = signupStep === "verify" && mode === "signup"
@@ -209,7 +252,24 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
   const googleSignup = useMutation({
     mutationFn: (credential: string) => endpoints.auth.googleAuth(credential, "signup"),
     onSuccess: (data) => {
-      applyGoogleAuth(data, setAuth, navigate, setSignupError)
+      if (data.status === "registered" || data.status === "authenticated" || data.email) {
+        setSignupError(null)
+        const from = (location.state as { from?: string } | null)?.from
+        navigate("/user/login", {
+          replace: true,
+          state: {
+            notice:
+              data.account_created === false
+                ? "Account already exists. Sign in with Google."
+                : data.message ||
+                  "Google account created. Sign in with Google to continue.",
+            email: data.email ?? undefined,
+            ...(from ? { from } : {}),
+          },
+        })
+        return
+      }
+      setSignupError(data.message ?? "Google sign-up failed")
     },
     onError: (err) => setSignupError(parseApiError(err, "Google sign-up failed")),
   })
@@ -218,7 +278,7 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
     mode === "login" && loginMethod === "palm" && palmsEnrolled ? "max-w-2xl" : "max-w-md"
 
   const signupCanSubmit =
-    username.trim().length >= 3 &&
+    USERNAME_RE.test(username.trim()) &&
     signupEmail.trim() &&
     signupPassword.length >= 8 &&
     signupPassword === confirmPassword &&
@@ -230,6 +290,12 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
         <div className="mb-4 flex justify-center">
           <PalmVeinLogo variant="full" size={72} subtitle="Member portal" />
         </div>
+
+        {authNotice && mode === "login" && loginSubview === "default" ? (
+          <div className="mb-4 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+            {authNotice}
+          </div>
+        ) : null}
 
         {!inVerification && loginSubview === "default" && (
           <div className="mb-6 flex rounded-lg border border-[var(--border)] bg-[color-mix(in_srgb,var(--accent)_40%,transparent)] p-1">
@@ -409,7 +475,7 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
               <div className="w-1/2 shrink-0 pl-1">
                 <h1 className="mb-1 text-center text-xl font-bold">Create account</h1>
                 <p className="mb-6 text-center text-sm text-[var(--muted-foreground)]">
-                  Register with Google (instant) or email (6-digit verification)
+                  Register with Google (then sign in) or email (6-digit verification)
                 </p>
                 <div className="space-y-4">
                   <GoogleSignInButton
@@ -430,10 +496,15 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
                     <Input
                       id="member-username"
                       value={username}
-                      onChange={(e) => setUsername(e.target.value)}
+                      onChange={(e) =>
+                        setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, "").slice(0, 32))
+                      }
                       placeholder="letters, numbers, underscore"
                       autoComplete="username"
                     />
+                    {username.trim() && !USERNAME_RE.test(username.trim()) ? (
+                      <p className="text-xs text-amber-400">Use 3–32 characters: letters, numbers, _</p>
+                    ) : null}
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="member-signup-email">Email</Label>
@@ -503,7 +574,15 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
           <EmailVerifyPanel
             email={signupEmail}
             emailSent={emailSent}
+            initialDevCode={signupDevCode}
             onVerified={(data) => handleAuthSuccess(data.access_token, data.user)}
+            onBack={() => {
+              setSignupStep("details")
+              setSignupDevCode(null)
+              setSignupError(null)
+              setCaptchaAnswer("")
+              void captcha.refetch()
+            }}
           />
         ) : null}
 

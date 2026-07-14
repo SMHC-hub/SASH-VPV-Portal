@@ -1,0 +1,23 @@
+[Unit]
+Description=VeinPay FastAPI backend (wallet API)
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/veinpay/palmpay
+Environment=PYTHONPATH=/opt/veinpay/palmpay
+EnvironmentFile=-/opt/veinpay/palmpay/.env
+ExecStart=/opt/veinpay/palmpay/.venv/bin/uvicorn backend.main:app --host 127.0.0.1 --port 8001 --workers 1
+Restart=always
+RestartSec=5
+# Matcher warm-up + first request can be slow on CPU
+TimeoutStartSec=180
+
+# Hardening
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

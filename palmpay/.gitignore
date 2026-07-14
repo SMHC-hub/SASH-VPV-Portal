@@ -1,0 +1,16 @@
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
+data/store/*.db
+data/users/**/*
+!data/users/_captures/.gitkeep
+# Personal KYC uploads — never push CNIC images
+data/palmpay/kyc/
+Google OAuth/
+mobile/.dart_tool/
+mobile/build/
+mobile/.flutter-plugins-dependencies
+mobile/.idea/
