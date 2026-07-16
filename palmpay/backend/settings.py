@@ -52,10 +52,10 @@ RECOGNITION_LOGS_ENABLED = os.environ.get("RECOGNITION_LOGS_ENABLED", "true").lo
 from palm_vein.config import CHECKPOINT_PRODUCTION  # noqa: E402
 
 # Heavy imports (torch / matcher) are loaded lazily in the routes that need them.
-DEFAULT_THRESHOLD = float(os.environ.get("MATCH_THRESHOLD", "0.40"))
-LOGIN_MATCH_THRESHOLD = float(os.environ.get("LOGIN_MATCH_THRESHOLD", "0.40"))
-ADMIN_MATCH_THRESHOLD = float(os.environ.get("ADMIN_MATCH_THRESHOLD", "0.40"))
-LOGIN_MATCH_MIN_MARGIN = float(os.environ.get("LOGIN_MATCH_MIN_MARGIN", "0.06"))
+DEFAULT_THRESHOLD = float(os.environ.get("MATCH_THRESHOLD", "0.32"))
+LOGIN_MATCH_THRESHOLD = float(os.environ.get("LOGIN_MATCH_THRESHOLD", "0.32"))
+ADMIN_MATCH_THRESHOLD = float(os.environ.get("ADMIN_MATCH_THRESHOLD", "0.32"))
+LOGIN_MATCH_MIN_MARGIN = float(os.environ.get("LOGIN_MATCH_MIN_MARGIN", "0.03"))
 EMBEDDING_DIM = 512  # 512-d L2-normalised float32 -> 2048 bytes per template.
 INFERENCE_DEVICE = os.environ.get("INFERENCE_DEVICE", "auto")
 
@@ -77,6 +77,8 @@ SMTP_USER = os.environ.get("SMTP_USER", DEFAULT_ADMIN_EMAIL)
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
 SMTP_FROM = os.environ.get("SMTP_FROM", DEFAULT_ADMIN_EMAIL)
 SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
+# Brevo v3 API key (xkeysib-...). Prefer this over SMTP when IP allowlists block relay.
+BREVO_API_KEY = os.environ.get("BREVO_API_KEY", "").strip()
 CORS_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -113,8 +115,8 @@ FRONTEND_PUBLIC_URL = os.environ.get("FRONTEND_PUBLIC_URL", "http://127.0.0.1:51
 PALMPAY_ACCESS_TTL_S = int(os.environ.get("PALMPAY_ACCESS_TTL_S", str(60 * 60)))  # 1 hour
 PALMPAY_REFRESH_TTL_S = int(os.environ.get("PALMPAY_REFRESH_TTL_S", str(60 * 60 * 24 * 30)))  # 30 days
 PALMPAY_OTP_TTL_S = int(os.environ.get("PALMPAY_OTP_TTL_S", "300"))  # 5 minutes
-# Dev: return OTP in API response + log to console (disable in production)
-PALMPAY_DEV_OTP = os.environ.get("PALMPAY_DEV_OTP", "true").lower() in ("1", "true", "yes")
+# Dev: return OTP in API response + log to console (must be false in production)
+PALMPAY_DEV_OTP = os.environ.get("PALMPAY_DEV_OTP", "false").lower() in ("1", "true", "yes")
 PALMPAY_OTP_MAX_PER_HOUR = int(
     os.environ.get("PALMPAY_OTP_MAX_PER_HOUR", "10" if PALMPAY_DEV_OTP else "3")
 )
@@ -122,6 +124,7 @@ PALMPAY_OTP_MAX_ATTEMPTS = int(os.environ.get("PALMPAY_OTP_MAX_ATTEMPTS", "5"))
 PALMPAY_LOCKOUT_MINUTES = int(os.environ.get("PALMPAY_LOCKOUT_MINUTES", "30"))
 PALMPAY_KYC_DIR = PROJECT_ROOT / "data" / "palmpay" / "kyc"
 PALMPAY_ENROLL_DIR = PROJECT_ROOT / "data" / "palmpay" / "enrollment"
+# When true, KYC submissions are auto-approved after CNIC upload (no admin review yet).
 PALMPAY_DEV_AUTO_KYC = os.environ.get("PALMPAY_DEV_AUTO_KYC", "true").lower() in ("1", "true", "yes")
 PALMPAY_ENROLLMENT_TTL_S = int(os.environ.get("PALMPAY_ENROLLMENT_TTL_S", str(60 * 30)))
 PALMPAY_DAILY_TRANSFER_LIMIT_PKR = float(os.environ.get("PALMPAY_DAILY_TRANSFER_LIMIT_PKR", "500000"))
@@ -133,7 +136,10 @@ PALMPAY_JAZZCASH_WEBHOOK_SECRET = os.environ.get(
 PALMPAY_KIOSK_DEVICE_TOKEN = os.environ.get("PALMPAY_KIOSK_DEVICE_TOKEN", "palmpay-kiosk-dev")
 PALMPAY_INTERNAL_SECRET = os.environ.get("PALMPAY_INTERNAL_SECRET", "palmpay-internal-dev")
 PALMPAY_PAYMENT_REQUEST_TTL_S = int(os.environ.get("PALMPAY_PAYMENT_REQUEST_TTL_S", "60"))
-PALMPAY_PALM_MATCH_THRESHOLD = float(os.environ.get("PALMPAY_PALM_MATCH_THRESHOLD", "0.97"))
+# Same cosine operating point as recognition / palm login (override with env if needed).
+PALMPAY_PALM_MATCH_THRESHOLD = float(
+    os.environ.get("PALMPAY_PALM_MATCH_THRESHOLD", str(LOGIN_MATCH_THRESHOLD))
+)
 PALMPAY_LOGIN_PIN_MAX_ATTEMPTS = int(os.environ.get("PALMPAY_LOGIN_PIN_MAX_ATTEMPTS", "5"))
 PALMPAY_SIGNUP_OTP_WINDOW_S = int(os.environ.get("PALMPAY_SIGNUP_OTP_WINDOW_S", "600"))
 

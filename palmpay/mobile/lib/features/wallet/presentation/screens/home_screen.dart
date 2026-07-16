@@ -62,7 +62,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
               LayoutBuilder(
                 builder: (context, constraints) {
                   final compact = constraints.maxWidth < 340;
-                  final largeBalance = balance >= 1000000;
+                  // "lac" subtitle appears from 100,000 — need a taller hero card.
+                  final largeBalance = balance >= 100000;
                   final heroHeight = largeBalance
                       ? (compact ? 184.0 : 196.0)
                       : (compact ? 156.0 : 172.0);

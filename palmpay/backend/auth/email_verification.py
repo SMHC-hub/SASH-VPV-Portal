@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import secrets
+import threading
 from datetime import datetime, timedelta, timezone
 
 from sqlalchemy import delete, select
@@ -34,7 +35,7 @@ def _role_label(role: str) -> str:
 
 
 def issue_verification_code(db: Session, account: models.Account) -> dict:
-    """Create a new code, invalidate prior codes, and email the user."""
+    """Create a new code, invalidate prior codes, and queue verification email."""
     code = _generate_code()
     expires_at = _utcnow() + timedelta(minutes=CODE_TTL_MINUTES)
 
@@ -56,22 +57,26 @@ def issue_verification_code(db: Session, account: models.Account) -> dict:
         f"This code expires in {CODE_TTL_MINUTES} minutes.\n"
         f"If you did not create an account, you can ignore this email.\n"
     )
-    result = send_email_detailed(
-        to=account.email,
-        subject="Verify your Palm Vein account",
-        body=body,
-    )
-    payload: dict = {
-        "sent": bool(result.get("sent")),
-        "reason": result.get("reason"),
+    subject = "Verify your Palm Vein account"
+    to = account.email
+
+    # Never block signup on SMTP — waiting in a thread pool here deadlocks FastAPI.
+    def _send() -> None:
+        result = send_email_detailed(to=to, subject=subject, body=body)
+        if not result.get("sent"):
+            logger.warning("Verification email not sent to %s: %s", to, result.get("reason"))
+        else:
+            logger.info("Verification email sent to %s", to)
+
+    threading.Thread(target=_send, daemon=True).start()
+    logger.warning("DEV verification code for %s: %s (expires %s)", to, code, expires_at)
+
+    return {
+        "sent": False,
+        "reason": "email_queued",
         "expires_at": expires_at,
+        "dev_code": code,
     }
-    if not result.get("sent"):
-        logger.warning("Verification email not sent to %s: %s", account.email, result.get("reason"))
-        logger.warning("DEV verification code for %s: %s (expires %s)", account.email, code, expires_at)
-        # So local signup stays usable when Brevo IP/auth fails
-        payload["dev_code"] = code
-    return payload
 
 
 def verify_email_code(db: Session, *, email: str, code: str) -> models.Account:

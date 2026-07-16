@@ -44,10 +44,10 @@ RECOGNITION_LOGS_ENABLED = True
 from palm_vein.config import CHECKPOINT_PRODUCTION  # noqa: E402
 
 # Heavy imports (torch / matcher) are loaded lazily in the routes that need them.
-DEFAULT_THRESHOLD = float(os.environ.get("MATCH_THRESHOLD", "0.40"))
-LOGIN_MATCH_THRESHOLD = float(os.environ.get("LOGIN_MATCH_THRESHOLD", "0.40"))
-ADMIN_MATCH_THRESHOLD = float(os.environ.get("ADMIN_MATCH_THRESHOLD", "0.40"))
-LOGIN_MATCH_MIN_MARGIN = float(os.environ.get("LOGIN_MATCH_MIN_MARGIN", "0.06"))
+DEFAULT_THRESHOLD = float(os.environ.get("MATCH_THRESHOLD", "0.32"))
+LOGIN_MATCH_THRESHOLD = float(os.environ.get("LOGIN_MATCH_THRESHOLD", "0.32"))
+ADMIN_MATCH_THRESHOLD = float(os.environ.get("ADMIN_MATCH_THRESHOLD", "0.32"))
+LOGIN_MATCH_MIN_MARGIN = float(os.environ.get("LOGIN_MATCH_MIN_MARGIN", "0.03"))
 EMBEDDING_DIM = 512  # 512-d L2-normalised float32 -> 2048 bytes per template.
 INFERENCE_DEVICE = os.environ.get("INFERENCE_DEVICE", "auto")
 

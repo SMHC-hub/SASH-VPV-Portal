@@ -55,7 +55,7 @@ class InitiateResponse(BaseModel):
 
 class PalmPayBody(BaseModel):
     order_id: int
-    confidence: float = Field(..., ge=0, le=1)
+    confidence: Optional[float] = Field(default=None, ge=0, le=1)
     scan_event_id: Optional[str] = None
 
 

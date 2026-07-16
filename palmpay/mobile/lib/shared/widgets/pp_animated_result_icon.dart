@@ -24,6 +24,7 @@ class _PpAnimatedResultIconState extends State<PpAnimatedResultIcon>
     with SingleTickerProviderStateMixin {
   late final AnimationController _controller;
   late final Animation<double> _scale;
+  late final Animation<double> _opacity;
 
   @override
   void initState() {
@@ -33,6 +34,7 @@ class _PpAnimatedResultIconState extends State<PpAnimatedResultIcon>
       duration: const Duration(milliseconds: 520),
     );
     _scale = CurvedAnimation(parent: _controller, curve: Curves.elasticOut);
+    _opacity = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
     _controller.forward();
     HapticFeedback.mediumImpact();
   }
@@ -45,19 +47,25 @@ class _PpAnimatedResultIconState extends State<PpAnimatedResultIcon>
 
   @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scale,
-      child: FadeTransition(
-        opacity: _controller,
-        child: Container(
-          width: widget.size,
-          height: widget.size,
-          decoration: BoxDecoration(
-            color: widget.color.withValues(alpha: 0.15),
-            shape: BoxShape.circle,
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Opacity(
+          opacity: _opacity.value.clamp(0.0, 1.0),
+          child: Transform.scale(
+            scale: _scale.value,
+            child: child,
           ),
-          child: Icon(widget.icon, size: widget.iconSize, color: widget.color),
+        );
+      },
+      child: Container(
+        width: widget.size,
+        height: widget.size,
+        decoration: BoxDecoration(
+          color: widget.color.withValues(alpha: 0.15),
+          shape: BoxShape.circle,
         ),
+        child: Icon(widget.icon, size: widget.iconSize, color: widget.color),
       ),
     );
   }

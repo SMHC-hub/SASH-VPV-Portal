@@ -80,7 +80,11 @@ export function Recognition() {
   const verifiablePeople = enrolledPeople.filter((person) =>
     person.hands.some((hand) => hand.enrolled),
   )
-  const gallerySize = gallery.data?.enrolled_identities ?? 0
+  const galleryHandCount = enrolledPeople.reduce(
+    (total, person) => total + person.hands.filter((hand) => hand.enrolled).length,
+    0,
+  )
+  const gallerySize = Math.max(gallery.data?.enrolled_identities ?? 0, galleryHandCount)
   const identitiesAuthError =
     identities.isError &&
     (identities.error as { response?: { status?: number } })?.response?.status === 401
@@ -124,7 +128,8 @@ export function Recognition() {
                   <p className="text-sm text-[var(--muted-foreground)]">Loading identities…</p>
                 ) : verifiablePeople.length === 0 ? (
                   <p className="text-sm text-[var(--muted-foreground)]">
-                    No enrolled palm templates yet. Use Enrollment or Signup first.
+                    No palm templates yet. Accounts in Identities are signups only until both hands
+                    are captured under Enrollment.
                   </p>
                 ) : (
                   <div className="max-h-56 space-y-1 overflow-y-auto">
@@ -165,9 +170,17 @@ export function Recognition() {
                   Hold palm steady 3–8 cm above the scanner until veins appear in the live feed.
                   First scan after restart may take up to a minute while the model loads.
                 </p>
-                {gallerySize === 0 && !gallery.isPending && (
+                {gallerySize === 0 && !gallery.isPending && !identities.isPending && (
                   <p className="mb-3 text-sm text-[var(--muted-foreground)]">
-                    No enrolled templates in gallery yet.
+                    No palm templates in the matcher gallery yet. Signing up creates an account,
+                    but Identify needs both palms captured under Enrollment (or Signup palm flow).
+                  </p>
+                )}
+                {gallerySize > 0 && (
+                  <p className="mb-3 text-xs text-[var(--muted-foreground)]">
+                    Gallery: {gallerySize} hand template{gallerySize === 1 ? "" : "s"} from{" "}
+                    {verifiablePeople.length} enrolled person
+                    {verifiablePeople.length === 1 ? "" : "s"}.
                   </p>
                 )}
                 <Button

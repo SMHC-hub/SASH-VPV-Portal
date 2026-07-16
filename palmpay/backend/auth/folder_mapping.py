@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import csv
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 from backend.settings import DATASET_DIR, FOLDER_MAPPING_CSV
+
+if TYPE_CHECKING:
+    from sqlalchemy.orm import Session
 
 CSV_HEADERS = [
     "folder_id",
@@ -40,8 +43,8 @@ def dataset_name_taken(name: str) -> bool:
     return any(r.get("dataset_name", "").lower() == name_l for r in read_rows())
 
 
-def next_folder_id() -> str:
-    """Allocate the next 3-digit folder id (001, 002, … 070, …)."""
+def next_folder_id(db: Session | None = None) -> str:
+    """Allocate the next 3-digit folder id (001, 002, …)."""
     ensure_csv()
     used: set[int] = set()
     for row in read_rows():
@@ -52,6 +55,18 @@ def next_folder_id() -> str:
     for sub in DATASET_DIR.iterdir():
         if sub.is_dir() and sub.name.isdigit():
             used.add(int(sub.name))
+    if db is not None:
+        from sqlalchemy import select
+
+        from backend.db import models
+
+        for dataset_id in db.execute(select(models.Account.dataset_id)).scalars():
+            if not dataset_id:
+                continue
+            try:
+                used.add(int(str(dataset_id).strip()))
+            except ValueError:
+                continue
     n = max(used) + 1 if used else 1
     return f"{n:03d}"
 

@@ -56,6 +56,39 @@ class AuthRepository {
     return AuthSession.fromJson(res.data!);
   }
 
+  Future<({bool enabled, String? clientId})> fetchGoogleConfig() async {
+    try {
+      final res = await _publicDio.get<Map<String, dynamic>>(ApiConfig.authGoogleConfig);
+      final enabled = res.data?['enabled'] as bool? ?? false;
+      final clientId = res.data?['client_id'] as String?;
+      if (enabled && (clientId?.isNotEmpty ?? false)) {
+        return (enabled: true, clientId: clientId);
+      }
+    } catch (_) {
+      // Older cloud builds may only expose the web Google config route.
+    }
+    try {
+      final res = await _publicDio.get<Map<String, dynamic>>('/api/auth/google/config');
+      return (
+        enabled: res.data?['enabled'] as bool? ?? false,
+        clientId: res.data?['client_id'] as String?,
+      );
+    } catch (_) {
+      return (enabled: false, clientId: null);
+    }
+  }
+
+  Future<AuthSession> loginWithGoogle({
+    required String credential,
+    required String intent,
+  }) async {
+    final res = await _publicDio.post<Map<String, dynamic>>(
+      ApiConfig.authGoogle,
+      data: {'credential': credential, 'intent': intent},
+    );
+    return AuthSession.fromJson(res.data!);
+  }
+
   Future<PasswordResetStartResult> requestPasswordReset(String email) async {
     final res = await _publicDio.post<Map<String, dynamic>>(
       ApiConfig.authForgotPassword,
@@ -189,7 +222,7 @@ class AuthRepository {
 
   Future<AuthSession> setLoginPin({
     required String loginPin,
-    bool useSamePinForSpending = false,
+    bool useSamePinForSpending = true,
   }) async {
     final res = await _dio.post<Map<String, dynamic>>(
       ApiConfig.authSetLoginPin,

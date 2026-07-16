@@ -133,8 +133,6 @@ class _SplashScreenState extends ConsumerState<SplashScreen> {
 
     if (onboarding.needsKyc) return 'Continue to verification';
 
-    if (onboarding.needsPalm) return 'Enroll palm';
-
     return 'Continue';
 
   }

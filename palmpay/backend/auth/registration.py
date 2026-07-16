@@ -215,9 +215,9 @@ def persist_customer_account(
     if username_taken(db, uname):
         raise ValueError("This username is already taken")
 
-    folder_id = next_folder_id()
+    folder_id = next_folder_id(db)
     while folder_id_taken(db, folder_id):
-        folder_id = next_folder_id()
+        folder_id = f"{int(folder_id) + 1:03d}"
 
     account = models.Account(
         email=email_l,

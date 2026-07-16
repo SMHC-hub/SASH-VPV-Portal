@@ -72,8 +72,17 @@ def refresh_account_templates(db: Session) -> int:
 
 
 
-def secure_match_for_account(probe: np.ndarray, account_id: int) -> SecureMatchResult:
+def secure_match_for_account(
+    probe: np.ndarray,
+    account_id: int,
+    *,
+    threshold: float | None = None,
+    min_margin: float | None = None,
+) -> SecureMatchResult:
     """1:1 account verify with global margin check against all cached templates."""
+    thr = threshold if threshold is not None else LOGIN_MATCH_THRESHOLD
+    margin_req = min_margin if min_margin is not None else LOGIN_MATCH_MIN_MARGIN
+
     with _lock:
         templates = list(_cached)
 
@@ -87,7 +96,7 @@ def secure_match_for_account(probe: np.ndarray, account_id: int) -> SecureMatchR
             similarity=-1.0,
             second_best_similarity=-1.0,
             margin=0.0,
-            threshold=LOGIN_MATCH_THRESHOLD,
+            threshold=thr,
             reason="No palm templates enrolled for this account",
         )
 
@@ -114,11 +123,11 @@ def secure_match_for_account(probe: np.ndarray, account_id: int) -> SecureMatchR
             similarity=account_best,
             second_best_similarity=second_sim,
             margin=margin,
-            threshold=LOGIN_MATCH_THRESHOLD,
+            threshold=thr,
             reason="Another account scored higher in the gallery",
         )
 
-    if account_best < LOGIN_MATCH_THRESHOLD:
+    if account_best < thr:
         return SecureMatchResult(
             matched=False,
             account_id=account_id,
@@ -127,11 +136,11 @@ def secure_match_for_account(probe: np.ndarray, account_id: int) -> SecureMatchR
             similarity=account_best,
             second_best_similarity=second_sim,
             margin=margin,
-            threshold=LOGIN_MATCH_THRESHOLD,
-            reason=f"Similarity {account_best:.3f} below threshold {LOGIN_MATCH_THRESHOLD:.3f}",
+            threshold=thr,
+            reason=f"Similarity {account_best:.3f} below threshold {thr:.3f}",
         )
 
-    if margin < LOGIN_MATCH_MIN_MARGIN:
+    if margin < margin_req:
         return SecureMatchResult(
             matched=False,
             account_id=account_id,
@@ -140,9 +149,9 @@ def secure_match_for_account(probe: np.ndarray, account_id: int) -> SecureMatchR
             similarity=account_best,
             second_best_similarity=second_sim,
             margin=margin,
-            threshold=LOGIN_MATCH_THRESHOLD,
+            threshold=thr,
             reason=(
-                f"Ambiguous match — margin {margin:.3f} below required {LOGIN_MATCH_MIN_MARGIN:.3f}"
+                f"Ambiguous match — margin {margin:.3f} below required {margin_req:.3f}"
             ),
         )
 
@@ -154,7 +163,7 @@ def secure_match_for_account(probe: np.ndarray, account_id: int) -> SecureMatchR
         similarity=account_best,
         second_best_similarity=second_sim,
         margin=margin,
-        threshold=LOGIN_MATCH_THRESHOLD,
+        threshold=thr,
     )
 
 

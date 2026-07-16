@@ -82,8 +82,14 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
         finally:
             db.close()
         logger.info("Warming neural matcher...")
-        get_matcher()
-        logger.info("Recognition logging enabled")
+        try:
+            get_matcher()
+            logger.info("Recognition logging enabled")
+        except Exception:
+            logger.exception(
+                "Matcher warm-up failed — API will run without on-server palm inference "
+                "(wallet/login still work; use local laptop + scanner for palm demos)"
+            )
 
     logger.info("Loading XRTECH SDK...")
     if not ensure_loaded():

@@ -18,10 +18,8 @@ from backend.deps import get_db
 from backend.deps_palmpay_auth import get_current_palmpay_account
 from backend.routes.palmpay_enrollment import _account_palm_enrolled
 from backend.settings import (
-    PALMPAY_DEV_SPENDING_PIN,
     PALMPAY_LOCKOUT_MINUTES,
     PALMPAY_LOGIN_PIN_MAX_ATTEMPTS,
-    PALMPAY_OTP_MAX_ATTEMPTS,
     PALMPAY_SIGNUP_OTP_WINDOW_S,
 )
 
@@ -50,7 +48,7 @@ class CompleteSignupRequest(BaseModel):
     phone: str = Field(min_length=10, max_length=20)
     full_name: str = Field(min_length=2, max_length=128)
     login_pin: str = Field(min_length=4, max_length=4)
-    use_same_pin_for_spending: bool = False
+    use_same_pin_for_spending: bool = True
 
 
 class LoginPinRequest(BaseModel):
@@ -60,14 +58,15 @@ class LoginPinRequest(BaseModel):
 
 class SetLoginPinRequest(BaseModel):
     login_pin: str = Field(min_length=4, max_length=4)
-    use_same_pin_for_spending: bool = False
+    # Payment PIN used for transfers — default True so Google post-KYC setup sets it.
+    use_same_pin_for_spending: bool = True
 
 
 class ResetLoginPinRequest(BaseModel):
     phone: str = Field(min_length=10, max_length=20)
     otp: str = Field(min_length=6, max_length=6)
     login_pin: str = Field(min_length=4, max_length=4)
-    use_same_pin_for_spending: bool = False
+    use_same_pin_for_spending: bool = True
 
 
 def _utcnow() -> datetime:
@@ -179,9 +178,9 @@ def register_login_pin_routes(router: APIRouter, helpers: dict) -> None:
         db.flush()
 
         spending_hash = (
-            hash_login_pin(payload.login_pin)
+            hash_spending_pin(payload.login_pin)
             if payload.use_same_pin_for_spending
-            else hash_spending_pin(PALMPAY_DEV_SPENDING_PIN)
+            else None
         )
         wallet = models.PalmPayWallet(
             account_id=account.id,
@@ -198,7 +197,14 @@ def register_login_pin_routes(router: APIRouter, helpers: dict) -> None:
         db.refresh(wallet)
 
         logger.info("PalmPay signup complete for %s", phone)
-        return token_response(account, wallet, access, refresh, needs_login_pin_setup=False)
+        return token_response(
+            account,
+            wallet,
+            access,
+            refresh,
+            needs_login_pin_setup=False,
+            needs_spending_pin_setup=wallet.spending_pin_hash is None,
+        )
 
     @router.post("/login/pin", response_model=helpers["TokenResponse"])
     def login_with_pin(payload: LoginPinRequest, db: Session = Depends(get_db)):
@@ -247,7 +253,7 @@ def register_login_pin_routes(router: APIRouter, helpers: dict) -> None:
                 account_id=account.id,
                 balance_pkr=0.0,
                 account_number=generate_wallet_number(),
-                spending_pin_hash=hash_spending_pin(PALMPAY_DEV_SPENDING_PIN),
+                spending_pin_hash=None,
             )
             db.add(wallet)
             db.flush()
@@ -256,7 +262,14 @@ def register_login_pin_routes(router: APIRouter, helpers: dict) -> None:
         db.commit()
         db.refresh(wallet)
 
-        return token_response(account, wallet, access, refresh, needs_login_pin_setup=False)
+        return token_response(
+            account,
+            wallet,
+            access,
+            refresh,
+            needs_login_pin_setup=False,
+            needs_spending_pin_setup=wallet.spending_pin_hash is None,
+        )
 
     @router.post("/pin/set", response_model=helpers["TokenResponse"])
     def set_login_pin(
@@ -279,18 +292,27 @@ def register_login_pin_routes(router: APIRouter, helpers: dict) -> None:
                 account_id=account.id,
                 balance_pkr=0.0,
                 account_number=generate_wallet_number(),
-                spending_pin_hash=hash_spending_pin(PALMPAY_DEV_SPENDING_PIN),
+                spending_pin_hash=None,
             )
             db.add(wallet)
             db.flush()
-        elif payload.use_same_pin_for_spending:
-            wallet.spending_pin_hash = hash_login_pin(payload.login_pin)
+
+        # Payment PIN for send-money — always set when requested (default True).
+        if payload.use_same_pin_for_spending or wallet.spending_pin_hash is None:
+            wallet.spending_pin_hash = hash_spending_pin(payload.login_pin)
 
         access, refresh = issue_token_pair(db, account)
         db.commit()
         db.refresh(account)
         db.refresh(wallet)
-        return token_response(account, wallet, access, refresh, needs_login_pin_setup=False)
+        return token_response(
+            account,
+            wallet,
+            access,
+            refresh,
+            needs_login_pin_setup=False,
+            needs_spending_pin_setup=wallet.spending_pin_hash is None,
+        )
 
     @router.post("/pin/reset", response_model=helpers["TokenResponse"])
     def reset_login_pin(payload: ResetLoginPinRequest, db: Session = Depends(get_db)):
@@ -323,12 +345,12 @@ def register_login_pin_routes(router: APIRouter, helpers: dict) -> None:
                 account_id=account.id,
                 balance_pkr=0.0,
                 account_number=generate_wallet_number(),
-                spending_pin_hash=hash_spending_pin(PALMPAY_DEV_SPENDING_PIN),
+                spending_pin_hash=None,
             )
             db.add(wallet)
             db.flush()
-        elif payload.use_same_pin_for_spending:
-            wallet.spending_pin_hash = hash_login_pin(payload.login_pin)
+        if payload.use_same_pin_for_spending or wallet.spending_pin_hash is None:
+            wallet.spending_pin_hash = hash_spending_pin(payload.login_pin)
 
         access, refresh = issue_token_pair(db, account)
         db.commit()
@@ -340,4 +362,5 @@ def register_login_pin_routes(router: APIRouter, helpers: dict) -> None:
             access,
             refresh,
             needs_login_pin_setup=False,
+            needs_spending_pin_setup=wallet.spending_pin_hash is None,
         )

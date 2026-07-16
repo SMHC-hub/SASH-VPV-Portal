@@ -44,6 +44,7 @@ class WalletProfile {
     required this.palmEnrolled,
     required this.fullName,
     required this.phone,
+    this.spendingPinSet = false,
   });
 
   final String? walletId;
@@ -52,6 +53,7 @@ class WalletProfile {
   final bool palmEnrolled;
   final String fullName;
   final String phone;
+  final bool spendingPinSet;
 
   factory WalletProfile.fromJson(Map<String, dynamic> json) {
     return WalletProfile(
@@ -61,9 +63,13 @@ class WalletProfile {
       palmEnrolled: json['palm_enrolled'] as bool? ?? false,
       fullName: json['full_name'] as String? ?? '',
       phone: json['phone'] as String? ?? '',
+      spendingPinSet: json['spending_pin_set'] as bool? ??
+          !(json['needs_spending_pin_setup'] as bool? ?? false),
     );
   }
 
   bool get kycApproved => kycStatus == 'approved';
-  bool get onboardingComplete => kycApproved && palmEnrolled;
+
+  /// Shell after KYC + payment PIN. Palm enroll stays optional in Scan tab.
+  bool get onboardingComplete => kycApproved && spendingPinSet;
 }

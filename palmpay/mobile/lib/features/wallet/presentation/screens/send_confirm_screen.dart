@@ -46,14 +46,19 @@ class _SendConfirmScreenState extends ConsumerState<SendConfirmScreen> {
             transferReference: preview.transferReference,
             spendingPin: spendingPin,
           );
+      if (!mounted) return;
       ref.read(walletControllerProvider.notifier).setOptimisticBalance(newBalance);
-      await ref.read(walletControllerProvider.notifier).refresh();
+      // Refresh off the critical path — setState after go() races Flutter element lifecycle.
+      // ignore: unawaited_futures
+      ref.read(walletControllerProvider.notifier).refresh();
       if (!mounted) return;
       context.go(AppRoutes.transferSuccess, extra: preview);
     } on DioException catch (e) {
-      setState(() => _error = dioErrorMessage(e));
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() {
+        _error = dioErrorMessage(e);
+        _loading = false;
+      });
     }
   }
 

@@ -24,14 +24,26 @@ type SignupStep = "details" | "verify"
 type LoginSubview = "default" | "forgot" | "verify"
 
 function parseApiError(err: unknown, fallback: string) {
-  const ax = err as { response?: { data?: { detail?: unknown }; status?: number }; message?: string }
+  const ax = err as {
+    response?: { data?: { detail?: unknown }; status?: number }
+    message?: string
+    code?: string
+  }
   const detail = ax?.response?.data?.detail
   if (typeof detail === "string") return detail
   if (Array.isArray(detail) && detail.length > 0) {
     const first = detail[0] as { msg?: string }
     if (typeof first?.msg === "string") return first.msg
   }
-  if (!ax?.response) return ax?.message?.includes("Network") ? "Cannot reach server — is the backend running?" : fallback
+  if (ax?.response?.status === 409) return typeof detail === "string" ? detail : "Account already exists"
+  if (!ax?.response) {
+    const msg = ax?.message ?? ""
+    if (ax?.code === "ECONNABORTED" || /timeout/i.test(msg)) {
+      return "Request timed out — try again"
+    }
+    if (/Network/i.test(msg)) return "Cannot reach server — is the backend running on port 8001?"
+    return fallback
+  }
   return fallback
 }
 
@@ -252,7 +264,12 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
   const googleSignup = useMutation({
     mutationFn: (credential: string) => endpoints.auth.googleAuth(credential, "signup"),
     onSuccess: (data) => {
-      if (data.status === "registered" || data.status === "authenticated" || data.email) {
+      if (data.status === "authenticated" && data.access_token) {
+        setSignupError(null)
+        applyGoogleAuth(data, setAuth, navigate, setSignupError, postAuthPath())
+        return
+      }
+      if (data.status === "registered" || data.email) {
         setSignupError(null)
         const from = (location.state as { from?: string } | null)?.from
         navigate("/user/login", {
@@ -261,8 +278,7 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
             notice:
               data.account_created === false
                 ? "Account already exists. Sign in with Google."
-                : data.message ||
-                  "Google account created. Sign in with Google to continue.",
+                : data.message || "Google account created. Sign in with Google to continue.",
             email: data.email ?? undefined,
             ...(from ? { from } : {}),
           },
@@ -271,7 +287,8 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
       }
       setSignupError(data.message ?? "Google sign-up failed")
     },
-    onError: (err) => setSignupError(parseApiError(err, "Google sign-up failed")),
+    onError: (err) =>
+      setSignupError(parseApiError(err, "Google sign-up timed out — check internet and try again")),
   })
 
   const panelWidth =
@@ -371,6 +388,12 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
                         googleLogin.mutate(credential)
                       }}
                     />
+                    {googleLogin.isPending ? (
+                      <div className="flex items-center justify-center gap-2 text-sm text-[var(--muted-foreground)]">
+                        <Loader2 className="size-4 animate-spin" />
+                        Signing in with Google…
+                      </div>
+                    ) : null}
                     <div className="flex items-center gap-3 text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
                       <span className="h-px flex-1 bg-[var(--border)]" />
                       or email
@@ -475,7 +498,7 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
               <div className="w-1/2 shrink-0 pl-1">
                 <h1 className="mb-1 text-center text-xl font-bold">Create account</h1>
                 <p className="mb-6 text-center text-sm text-[var(--muted-foreground)]">
-                  Register with Google (then sign in) or email (6-digit verification)
+                  Sign up with Google for instant access, or use email with 6-digit verification
                 </p>
                 <div className="space-y-4">
                   <GoogleSignInButton
@@ -486,6 +509,12 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
                       googleSignup.mutate(credential)
                     }}
                   />
+                  {googleSignup.isPending ? (
+                    <div className="flex items-center justify-center gap-2 text-sm text-[var(--muted-foreground)]">
+                      <Loader2 className="size-4 animate-spin" />
+                      Creating your account with Google…
+                    </div>
+                  ) : null}
                   <div className="flex items-center gap-3 text-xs uppercase tracking-wider text-[var(--muted-foreground)]">
                     <span className="h-px flex-1 bg-[var(--border)]" />
                     or email
@@ -596,6 +625,11 @@ export function MemberAuthPage({ initialMode }: { initialMode: AuthMode }) {
             Employee?{" "}
             <Link to="/employee/login" className="hover:text-[var(--primary)] hover:underline">
               Employee sign in
+            </Link>
+            {" · "}
+            Shop owner?{" "}
+            <Link to="/owner/login" className="hover:text-[var(--primary)] hover:underline">
+              Shop owner sign in
             </Link>
           </p>
         )}

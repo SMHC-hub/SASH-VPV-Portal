@@ -80,9 +80,20 @@ def _migrate_account_role() -> None:
 
 
 def _ensure_admin_role() -> None:
-    """First registered account becomes admin."""
+    """Bootstrap: ensure at least one admin exists; never re-promote the first account if an admin is already set."""
+    preferred_admin = "saudakbar65367@gmail.com"
     with engine.connect() as conn:
-        row = conn.execute(text("SELECT id FROM accounts ORDER BY id LIMIT 1")).fetchone()
+        admin_count = conn.execute(
+            text("SELECT COUNT(*) FROM accounts WHERE role = 'admin'")
+        ).scalar_one()
+        if admin_count:
+            return
+        row = conn.execute(
+            text("SELECT id FROM accounts WHERE lower(email) = lower(:email)"),
+            {"email": preferred_admin},
+        ).fetchone()
+        if not row:
+            row = conn.execute(text("SELECT id FROM accounts ORDER BY id LIMIT 1")).fetchone()
         if row:
             conn.execute(
                 text("UPDATE accounts SET role = 'admin' WHERE id = :id"),
@@ -350,16 +361,18 @@ def _ensure_palmpay_day4_tables() -> None:
                 conn.execute(text(stmt))
 
     from backend.auth.palmpay_pin import hash_spending_pin
-    from backend.settings import PALMPAY_DEV_SPENDING_PIN
+    from backend.settings import PALMPAY_DEV_OTP, PALMPAY_DEV_SPENDING_PIN
 
-    with engine.begin() as conn:
-        conn.execute(
-            text(
-                "UPDATE palmpay_wallets SET spending_pin_hash = :hash "
-                "WHERE spending_pin_hash IS NULL"
-            ),
-            {"hash": hash_spending_pin(PALMPAY_DEV_SPENDING_PIN)},
-        )
+    # Never force the demo PIN onto production wallets.
+    if PALMPAY_DEV_OTP:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "UPDATE palmpay_wallets SET spending_pin_hash = :hash "
+                    "WHERE spending_pin_hash IS NULL"
+                ),
+                {"hash": hash_spending_pin(PALMPAY_DEV_SPENDING_PIN)},
+            )
 
 
 def _ensure_palmpay_day5_tables() -> None:

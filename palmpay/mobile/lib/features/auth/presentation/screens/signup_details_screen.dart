@@ -10,11 +10,11 @@ import '../../../../core/router/app_routes.dart';
 import '../../../../core/utils/pk_phone.dart';
 import '../../../../core/constants/veinpay_brand.dart';
 import '../../../onboarding/presentation/providers/auth_provider.dart';
-import '../../../onboarding/data/auth_repository.dart';
 import '../../../../shared/widgets/pp_button.dart';
 import '../../../../shared/widgets/pp_form_scroll.dart';
 import '../../../../shared/widgets/pp_phone_field.dart';
 import '../../../../shared/widgets/veinpay_logo.dart';
+import '../widgets/google_auth_button.dart';
 
 class SignupDetailsScreen extends ConsumerStatefulWidget {
   const SignupDetailsScreen({super.key});
@@ -116,6 +116,30 @@ class _SignupDetailsScreenState extends ConsumerState<SignupDetailsScreen> {
             const VeinPayLogo(size: VeinPayBrand.logoMd),
             const SizedBox(height: AppSpacing.md),
             Text('Sign up for ${VeinPayBrand.appName}', style: AppTextStyles.title(context)),
+            const SizedBox(height: AppSpacing.lg),
+            GoogleAuthButton(
+              intent: 'signup',
+              disabled: _loading,
+              onSuccess: () {
+                if (!mounted) return;
+                // Router redirect sends KYC/home after session is stored.
+              },
+              onError: (msg) {
+                if (!mounted) return;
+                setState(() => _error = msg);
+              },
+            ),
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                const Expanded(child: Divider()),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                  child: Text('or email', style: AppTextStyles.label(context)),
+                ),
+                const Expanded(child: Divider()),
+              ],
+            ),
             const SizedBox(height: AppSpacing.lg),
             TextField(
               controller: _nameController,

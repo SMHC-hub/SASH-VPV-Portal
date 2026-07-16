@@ -98,14 +98,19 @@ class _AddMoneyScreenState extends ConsumerState<AddMoneyScreen> {
     try {
       final init = await ref.read(walletRepositoryProvider).initiateTopUp(amount);
       final balance = await ref.read(walletRepositoryProvider).simulateTopUpExisting(init.orderReference);
+      if (!mounted) return;
       ref.read(walletControllerProvider.notifier).setOptimisticBalance(balance);
-      await ref.read(walletControllerProvider.notifier).refresh();
+      // Refresh in background — don't setState/navigate race after leaving this screen.
+      // ignore: unawaited_futures
+      ref.read(walletControllerProvider.notifier).refresh();
       if (!mounted) return;
       context.go(AppRoutes.topUpSuccess, extra: amount);
     } on DioException catch (e) {
-      setState(() => _error = dioErrorMessage(e));
-    } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() {
+        _error = dioErrorMessage(e);
+        _loading = false;
+      });
     }
   }
 

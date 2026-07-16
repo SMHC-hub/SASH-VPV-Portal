@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import random
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
@@ -12,12 +11,12 @@ from sqlalchemy import delete, select, update
 from sqlalchemy.orm import Session
 
 from backend.auth.palmpay_login_pin import hash_login_pin, validate_login_pin
+from backend.auth.palmpay_otp_delivery import issue_email_otp, issue_phone_otp, maybe_dev_otp
 from backend.auth.palmpay_phone import normalize_pk_phone
 from backend.auth.palmpay_pin import hash_spending_pin
 from backend.auth.passwords import hash_password, verify_password
 from backend.db import models
 from backend.deps import get_db
-from backend.settings import PALMPAY_DEV_OTP, PALMPAY_DEV_SPENDING_PIN, PALMPAY_OTP_TTL_S
 
 logger = logging.getLogger(__name__)
 
@@ -92,34 +91,6 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
-def _generate_otp() -> str:
-    return f"{random.randint(0, 999999):06d}"
-
-
-def _issue_phone_otp(db: Session, phone: str) -> Optional[str]:
-    code = _generate_otp()
-    db.add(
-        models.PalmPayOtpCode(
-            phone=phone,
-            code=code,
-            expires_at=_utcnow() + timedelta(seconds=PALMPAY_OTP_TTL_S),
-        )
-    )
-    return code if PALMPAY_DEV_OTP else None
-
-
-def _issue_email_otp(db: Session, email: str) -> Optional[str]:
-    code = _generate_otp()
-    db.add(
-        models.PalmPayEmailOtpCode(
-            email=email,
-            code=code,
-            expires_at=_utcnow() + timedelta(seconds=PALMPAY_OTP_TTL_S),
-        )
-    )
-    return code if PALMPAY_DEV_OTP else None
-
-
 def _validate_phone_otp(db: Session, phone: str, otp: str) -> None:
     row = db.execute(
         select(models.PalmPayOtpCode)
@@ -178,17 +149,25 @@ def register_email_auth_routes(router: APIRouter, helpers: dict) -> None:
         )
         db.add(draft)
 
-        dev_phone = _issue_phone_otp(db, phone)
-        dev_email = _issue_email_otp(db, email)
+        phone_code, _ = issue_phone_otp(db, phone=phone, notify_email=email)
+        email_code, _ = issue_email_otp(
+            db,
+            email=email,
+            subject="VeinPay email verification code",
+            body_prefix="Confirm your VeinPay email address.",
+        )
         db.commit()
 
         return SignupStartResponse(
             success=True,
             phone=phone,
             email=email,
-            message="Verification codes sent to your phone and email",
-            dev_otp_phone=dev_phone,
-            dev_otp_email=dev_email,
+            message=(
+                "Verification codes sent to your email "
+                "(phone code is emailed until SMS is enabled)"
+            ),
+            dev_otp_phone=maybe_dev_otp(phone_code),
+            dev_otp_email=maybe_dev_otp(email_code),
         )
 
     @router.post("/register/verify-phone-signup")
@@ -256,11 +235,12 @@ def register_email_auth_routes(router: APIRouter, helpers: dict) -> None:
         db.add(account)
         db.flush()
 
+        # Same PIN used for payments (P2P transfers / confirm spending).
         wallet = models.PalmPayWallet(
             account_id=account.id,
             balance_pkr=0.0,
             account_number=generate_wallet_number(),
-            spending_pin_hash=hash_spending_pin(PALMPAY_DEV_SPENDING_PIN),
+            spending_pin_hash=hash_spending_pin(payload.login_pin),
         )
         db.add(wallet)
         db.delete(draft)
@@ -296,7 +276,7 @@ def register_email_auth_routes(router: APIRouter, helpers: dict) -> None:
                 account_id=account.id,
                 balance_pkr=0.0,
                 account_number=generate_wallet_number(),
-                spending_pin_hash=hash_spending_pin(PALMPAY_DEV_SPENDING_PIN),
+                spending_pin_hash=None,
             )
             db.add(wallet)
             db.flush()
@@ -310,7 +290,15 @@ def register_email_auth_routes(router: APIRouter, helpers: dict) -> None:
             logger.exception("Web↔PalmPay reverse link failed on email login for %s", email)
         db.commit()
         db.refresh(wallet)
-        return token_response(account, wallet, access, refresh, needs_login_pin_setup=False)
+        needs_spending = wallet.spending_pin_hash is None
+        return token_response(
+            account,
+            wallet,
+            access,
+            refresh,
+            needs_login_pin_setup=False,
+            needs_spending_pin_setup=needs_spending,
+        )
 
     @router.post("/password/forgot", response_model=ForgotPasswordResponse)
     def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)) -> ForgotPasswordResponse:
@@ -324,14 +312,19 @@ def register_email_auth_routes(router: APIRouter, helpers: dict) -> None:
                 detail="No account with this email — sign up first",
             )
 
-        dev_otp = _issue_email_otp(db, email)
+        code, _ = issue_email_otp(
+            db,
+            email=email,
+            subject="VeinPay password reset code",
+            body_prefix="Use this code to reset your VeinPay password.",
+        )
         db.commit()
 
         return ForgotPasswordResponse(
             success=True,
             email=email,
             message="Reset code sent to your email",
-            dev_otp=dev_otp,
+            dev_otp=maybe_dev_otp(code),
         )
 
     @router.post("/password/reset", response_model=ResetPasswordResponse)
@@ -344,7 +337,17 @@ def register_email_auth_routes(router: APIRouter, helpers: dict) -> None:
             raise HTTPException(status_code=404, detail="Account not found")
 
         _validate_email_otp(db, email, payload.otp)
-        account.password_hash = hash_password(payload.new_password)
+        new_hash = hash_password(payload.new_password)
+        account.password_hash = new_hash
+        web = db.execute(
+            select(models.Account).where(models.Account.palmpay_account_id == account.id)
+        ).scalar_one_or_none()
+        if web is None:
+            from backend.shop.identity_link import link_web_accounts_matching_palmpay
+
+            web = link_web_accounts_matching_palmpay(db, account, commit=False)
+        if web is not None:
+            web.password_hash = new_hash
         db.execute(
             update(models.PalmPayRefreshToken)
             .where(models.PalmPayRefreshToken.account_id == account.id)

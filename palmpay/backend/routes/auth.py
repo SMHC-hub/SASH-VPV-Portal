@@ -7,6 +7,8 @@ import shutil
 import secrets
 import time
 import uuid
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 from threading import Lock
@@ -39,6 +41,7 @@ from backend.auth.template_cache import match_probe, resolve_account, secure_mat
 from backend.auth.jwt_tokens import create_access_token
 from backend.auth.passwords import hash_password, verify_password
 from backend.db import models
+from backend.db.base import SessionLocal
 from backend.deps import get_db
 from backend.deps_auth import get_current_account, require_customer
 from backend.device.singleton import get_device, get_fresh_frame
@@ -51,12 +54,20 @@ from backend.settings import (
     GOOGLE_CLIENT_ID,
     USERS_REF_DIR,
 )
-from backend.utils.embeddings import bytes_to_embedding
+from backend.shop.identity_link import (
+    ensure_web_account_for_palmpay,
+    get_linked_palmpay_account,
+    link_account_to_palmpay,
+    resolve_palmpay_by_email,
+)
 
 from xrtech_device import save_frame_png  # noqa: E402
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+
+# Dedicated pool so signup is not queued behind palm/device sync handlers.
+_register_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix="auth-register")
 
 CAPTURES_PER_HAND = 10
 REGISTER_TMP = USERS_REF_DIR / "_register_sessions"
@@ -502,39 +513,60 @@ def register_start(body: RegisterStartRequest, db: Session = Depends(get_db)) ->
 
 
 @router.post("/register/customer/start", response_model=RegisterStartResponse)
-def register_customer_start(
-    body: CustomerRegisterStartRequest,
-    db: Session = Depends(get_db),
-) -> RegisterStartResponse:
+async def register_customer_start(body: CustomerRegisterStartRequest) -> RegisterStartResponse:
     if body.password != body.confirm_password:
         raise HTTPException(status_code=400, detail="Passwords do not match")
-    if not verify_captcha(body.captcha_id, body.captcha_answer):
-        raise HTTPException(status_code=400, detail="Human verification failed — try again")
 
+    loop = asyncio.get_running_loop()
     try:
-        account = persist_customer_account(
-            db,
-            email=body.email.lower(),
-            password_hash=hash_password(body.password),
-            username=body.username,
-            email_verified=False,
+        return await loop.run_in_executor(
+            _register_executor,
+            lambda: _register_customer_start_sync(body),
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except _RegisterFlowError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
-    mail = issue_verification_code(db, account)
-    sent = bool(mail.get("sent"))
-    return RegisterStartResponse(
-        message=(
-            "Verification code sent to your email. Enter it to activate your account."
-            if sent
-            else "Account created. Email delivery failed — use the verification code shown on screen."
-        ),
-        email=account.email,
-        verification_required=True,
-        email_sent=sent,
-        dev_code=None if sent else mail.get("dev_code"),
-    )
+
+class _RegisterFlowError(Exception):
+    def __init__(self, status_code: int, detail: str) -> None:
+        self.status_code = status_code
+        self.detail = detail
+        super().__init__(detail)
+
+
+def _register_customer_start_sync(body: CustomerRegisterStartRequest) -> RegisterStartResponse:
+    if not verify_captcha(body.captcha_id, body.captcha_answer):
+        raise _RegisterFlowError(400, "Human verification failed — try again")
+
+    db = SessionLocal()
+    try:
+        try:
+            account = persist_customer_account(
+                db,
+                email=body.email.lower(),
+                password_hash=hash_password(body.password),
+                username=body.username,
+                email_verified=False,
+            )
+        except ValueError as exc:
+            raise _RegisterFlowError(409, str(exc)) from exc
+
+        mail = issue_verification_code(db, account)
+        sent = bool(mail.get("sent"))
+        dev_code = mail.get("dev_code")
+        return RegisterStartResponse(
+            message=(
+                "Verification code sent to your email. Enter it to activate your account."
+                if sent
+                else "Account created. Enter the verification code shown on the next screen."
+            ),
+            email=account.email,
+            verification_required=True,
+            email_sent=sent,
+            dev_code=dev_code,
+        )
+    finally:
+        db.close()
 
 
 @router.post("/register/customer/verify", response_model=dict)
@@ -724,7 +756,7 @@ def register_palm_start(
             )
         clear_orphan_users(db, name)
         db.commit()
-        folder_id = next_folder_id()
+        folder_id = next_folder_id(db)
         sess.dataset_name = name
         sess.folder_id = folder_id
 
@@ -961,6 +993,14 @@ def _account_has_palms(account: models.Account) -> bool:
 
 
 def _customer_auth_response(db: Session, account: models.Account, login_method: str) -> GoogleAuthResponse:
+    try:
+        from backend.shop.identity_link import ensure_palmpay_link_for_account
+
+        ensure_palmpay_link_for_account(db, account, commit=True)
+    except Exception:
+        logger.exception(
+            "PalmPay provision failed after Google auth for account_id=%s", account.id
+        )
     token = create_access_token(account.id, account.email)
     auth_sess = start_session(db, account_id=account.id, login_method=login_method)
     return GoogleAuthResponse(
@@ -1017,92 +1057,95 @@ def google_config() -> GoogleConfigResponse:
 
 
 @router.post("/google", response_model=GoogleAuthResponse)
-def google_auth(body: GoogleAuthRequest, db: Session = Depends(get_db)) -> GoogleAuthResponse:
-    profile = verify_google_credential(body.credential)
+async def google_auth(body: GoogleAuthRequest) -> GoogleAuthResponse:
+    loop = asyncio.get_running_loop()
+    try:
+        return await loop.run_in_executor(
+            _register_executor,
+            lambda: _google_auth_sync(body),
+        )
+    except _RegisterFlowError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
+
+
+def _google_auth_sync(body: GoogleAuthRequest) -> GoogleAuthResponse:
+    try:
+        profile = verify_google_credential(body.credential)
+    except HTTPException as exc:
+        raise _RegisterFlowError(exc.status_code, str(exc.detail)) from exc
+
     email = profile["email"]
     google_sub = profile["sub"]
     full_name = profile["full_name"]
 
-    account = db.execute(
-        select(models.Account).where(
-            (models.Account.google_sub == google_sub) | (models.Account.email == email)
-        )
-    ).scalar_one_or_none()
-
-    if account is not None:
-        _customer_portal_denied(account.role)
-        account = _link_google_account(db, account, google_sub)
-        if body.intent == "signup":
-            log_activity(
-                db,
-                account_id=account.id,
-                event_type="signup_complete",
-                detail="google_signup_existing",
-                commit=True,
-            )
-            # Signup UI expects a login step — don't mint a session here.
-            return GoogleAuthResponse(
-                status="registered",
-                account_created=False,
-                account_id=account.id,
-                email=account.email,
-                full_name=account.full_name,
-                role=account.role,
-                message="Account already exists — please sign in with Google",
-            )
-        return _customer_auth_response(
-            db,
-            account,
-            login_method="google",
-        )
-
-    if body.intent == "login":
-        raise HTTPException(status_code=404, detail="No member account found — please sign up first")
-
-    base_username = re.sub(r"[^a-z0-9_]", "_", email.split("@")[0].lower())[:32]
-    if len(base_username) < 3:
-        base_username = f"user_{secrets.token_hex(3)}"
-    username = base_username
-    suffix = 1
-    while username_taken(db, username):
-        username = f"{base_username[:28]}_{suffix}"
-        suffix += 1
-
+    db = SessionLocal()
     try:
-        persist_customer_account(
+        account = db.execute(
+            select(models.Account).where(
+                (models.Account.google_sub == google_sub) | (models.Account.email == email)
+            )
+        ).scalar_one_or_none()
+
+        if account is not None:
+            try:
+                _customer_portal_denied(account.role)
+            except HTTPException as exc:
+                raise _RegisterFlowError(exc.status_code, str(exc.detail)) from exc
+            try:
+                account = _link_google_account(db, account, google_sub)
+            except HTTPException as exc:
+                raise _RegisterFlowError(exc.status_code, str(exc.detail)) from exc
+            if body.intent == "signup":
+                log_activity(
+                    db,
+                    account_id=account.id,
+                    event_type="signup_complete",
+                    detail="google_signup_existing",
+                    commit=True,
+                )
+            return _customer_auth_response(db, account, login_method="google")
+
+        if body.intent == "login":
+            raise _RegisterFlowError(404, "No member account found — please sign up first")
+
+        base_username = re.sub(r"[^a-z0-9_]", "_", email.split("@")[0].lower())[:32]
+        if len(base_username) < 3:
+            base_username = f"user_{secrets.token_hex(3)}"
+        username = base_username
+        suffix = 1
+        while username_taken(db, username):
+            username = f"{base_username[:28]}_{suffix}"
+            suffix += 1
+
+        try:
+            persist_customer_account(
+                db,
+                email=email,
+                password_hash=hash_password(secrets.token_urlsafe(48)),
+                username=username,
+                full_name=full_name,
+                email_verified=True,
+                google_sub=google_sub,
+            )
+        except ValueError as exc:
+            raise _RegisterFlowError(409, str(exc)) from exc
+
+        account = db.execute(
+            select(models.Account).where(models.Account.email == email)
+        ).scalar_one_or_none()
+        if account is None:
+            raise _RegisterFlowError(500, "Could not create Google account")
+
+        log_activity(
             db,
-            email=email,
-            password_hash=hash_password(secrets.token_urlsafe(48)),
-            username=username,
-            full_name=full_name,
-            email_verified=True,
-            google_sub=google_sub,
+            account_id=account.id,
+            event_type="signup_complete",
+            detail="google_signup",
+            commit=True,
         )
-    except ValueError as exc:
-        raise HTTPException(status_code=409, detail=str(exc)) from exc
-
-    account = db.execute(
-        select(models.Account).where(models.Account.email == email)
-    ).scalar_one_or_none()
-    if account is None:
-        raise HTTPException(status_code=500, detail="Could not create Google account")
-
-    log_activity(
-        db,
-        account_id=account.id,
-        event_type="signup_complete",
-        detail="google_signup",
-        commit=True,
-    )
-    return GoogleAuthResponse(
-        status="registered",
-        account_created=True,
-        account_id=account.id,
-        email=account.email,
-        full_name=account.full_name,
-        role=account.role,
-        message="Google account created — please sign in",
-    )
+        return _customer_auth_response(db, account, login_method="google")
+    finally:
+        db.close()
 
 
 @router.post("/register/enroll/start", response_model=RegisterSessionStatus)
@@ -1207,13 +1250,45 @@ def login_customer_palm(db: Session = Depends(get_db)) -> PalmLoginResponse:
     )
 
 
-@router.post("/login/customer")
-def login_customer(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
-    email_l = body.email.lower()
+def _authenticate_account_credentials(
+    db: Session,
+    email: str,
+    password: str,
+) -> models.Account | None:
+    """Verify web Account password, or PalmPay mobile password with hash sync."""
+    email_l = email.lower().strip()
     account = db.execute(
         select(models.Account).where(models.Account.email == email_l)
     ).scalar_one_or_none()
-    if account is None or not verify_password(body.password, account.password_hash):
+    if account is not None and account.password_hash and verify_password(password, account.password_hash):
+        return account
+
+    palmpay = resolve_palmpay_by_email(db, email_l)
+    if palmpay is None or not palmpay.password_hash:
+        return None
+    if not verify_password(password, palmpay.password_hash):
+        return None
+
+    if account is None:
+        account = ensure_web_account_for_palmpay(db, palmpay, commit=False)
+    else:
+        account.password_hash = palmpay.password_hash
+        if not account.email_verified and (palmpay.email_verified or palmpay.email):
+            account.email_verified = True
+        try:
+            link_account_to_palmpay(db, account, palmpay, commit=False)
+        except ValueError as exc:
+            logger.warning("PalmPay login link skipped for %s: %s", email_l, exc)
+
+    db.commit()
+    db.refresh(account)
+    return account
+
+
+@router.post("/login/customer")
+def login_customer(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
+    account = _authenticate_account_credentials(db, body.email, body.password)
+    if account is None:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if account.role != "customer":
         _customer_portal_denied(account.role)
@@ -1227,11 +1302,8 @@ def login_customer(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
 
 @router.post("/login")
 def login_password(body: LoginRequest, db: Session = Depends(get_db)) -> dict:
-    email_l = body.email.lower()
-    account = db.execute(
-        select(models.Account).where(models.Account.email == email_l)
-    ).scalar_one_or_none()
-    if account is None or not verify_password(body.password, account.password_hash):
+    account = _authenticate_account_credentials(db, body.email, body.password)
+    if account is None:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     if not account.email_verified:
         raise HTTPException(
@@ -1458,7 +1530,11 @@ def change_password(
         raise HTTPException(status_code=400, detail="New passwords do not match")
     if not verify_password(body.current_password, account.password_hash):
         raise HTTPException(status_code=401, detail="Current password is incorrect")
-    account.password_hash = hash_password(body.new_password)
+    new_hash = hash_password(body.new_password)
+    account.password_hash = new_hash
+    palmpay = get_linked_palmpay_account(db, account)
+    if palmpay is not None:
+        palmpay.password_hash = new_hash
     log_activity(
         db,
         account_id=account.id,

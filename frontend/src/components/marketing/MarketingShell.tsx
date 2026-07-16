@@ -77,9 +77,17 @@ export function MarketingShell() {
               <Button asChild size="sm" className="btn-brand">
                 <Link to="/user/signup">Get started</Link>
               </Button>
+              <Button asChild variant="secondary" size="sm">
+                <Link to="/kiosk/enroll">Web Kiosk</Link>
+              </Button>
             </div>
           ) : (
-            <CustomerThemeToggle />
+            <div className="flex items-center gap-2">
+              <Button asChild variant="secondary" size="sm">
+                <Link to="/kiosk/enroll">Web Kiosk</Link>
+              </Button>
+              <CustomerThemeToggle />
+            </div>
           )
         }
       >

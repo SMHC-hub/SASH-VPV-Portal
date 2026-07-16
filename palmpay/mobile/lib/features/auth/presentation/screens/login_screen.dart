@@ -10,12 +10,12 @@ import '../../../../core/network/network_exceptions.dart';
 import '../../../../core/router/app_routes.dart';
 import '../../../../core/storage/secure_storage.dart';
 import '../../../onboarding/presentation/providers/auth_provider.dart';
-import '../../../onboarding/data/auth_repository.dart';
 import '../../../../shared/widgets/pp_button.dart';
 import '../../../../shared/widgets/pp_form_scroll.dart';
 import '../../../../shared/widgets/pp_screen_header.dart';
 import '../../../../shared/widgets/pp_inline_error_state.dart';
 import '../../../../shared/widgets/veinpay_logo.dart';
+import '../widgets/google_auth_button.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -215,6 +215,30 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               PpButton(
                 label: _loading ? 'Signing in...' : 'Log in',
                 onPressed: _loading ? null : _submit,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              Row(
+                children: [
+                  const Expanded(child: Divider()),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: AppSpacing.sm),
+                    child: Text('or', style: AppTextStyles.label(context)),
+                  ),
+                  const Expanded(child: Divider()),
+                ],
+              ),
+              const SizedBox(height: AppSpacing.md),
+              GoogleAuthButton(
+                intent: 'login',
+                disabled: _loading,
+                onSuccess: _onAuthSuccess,
+                onError: (msg) {
+                  if (!mounted) return;
+                  setState(() {
+                    _error = msg;
+                    _loading = false;
+                  });
+                },
               ),
               if (_biometricReady) ...[
                 const SizedBox(height: AppSpacing.md),

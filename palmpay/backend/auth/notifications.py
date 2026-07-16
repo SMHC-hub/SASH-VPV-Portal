@@ -1,8 +1,11 @@
 """Optional email notifications for attendance events."""
 from __future__ import annotations
 
+import json
 import logging
 import smtplib
+import urllib.error
+import urllib.request
 from datetime import timedelta
 from email.mime.text import MIMEText
 from typing import Optional
@@ -13,6 +16,7 @@ from sqlalchemy.orm import Session
 from backend.auth.attendance import get_settings, work_date_str
 from backend.db import models
 from backend.settings import (
+    BREVO_API_KEY,
     SMTP_FROM,
     SMTP_HOST,
     SMTP_PASSWORD,
@@ -25,33 +29,69 @@ logger = logging.getLogger(__name__)
 
 
 def smtp_configured() -> bool:
-    return bool(SMTP_HOST and SMTP_FROM and SMTP_PASSWORD)
+    return bool(SMTP_FROM and (SMTP_PASSWORD or BREVO_API_KEY))
 
 
-def send_email_detailed(*, to: str, subject: str, body: str) -> dict:
-    if not smtp_configured():
-        logger.info("Email (not sent — SMTP not configured): to=%s subject=%s", to, subject)
+def _send_via_brevo_api(*, to: str, subject: str, body: str, timeout_s: float) -> dict:
+    api_key = (BREVO_API_KEY or "").strip()
+    if not api_key:
+        return {"sent": False, "reason": "brevo_api_not_configured"}
+    payload = json.dumps(
+        {
+            "sender": {"email": SMTP_FROM, "name": "VeinPay"},
+            "to": [{"email": to}],
+            "subject": subject,
+            "textContent": body,
+        }
+    ).encode("utf-8")
+    req = urllib.request.Request(
+        "https://api.brevo.com/v3/smtp/email",
+        data=payload,
+        headers={
+            "api-key": api_key,
+            "content-type": "application/json",
+            "accept": "application/json",
+        },
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_s) as resp:
+            raw = resp.read().decode("utf-8", errors="replace")
+            logger.info("Brevo API email sent to %s: %s", to, subject)
+            return {"sent": True, "provider": "brevo_api", "raw": raw[:200]}
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")
+        logger.warning("Brevo API email failed to=%s status=%s body=%s", to, exc.code, detail[:300])
+        low = detail.lower()
+        if exc.code in (401, 403) and ("ip" in low or "unauthorized" in low):
+            return {"sent": False, "reason": "smtp_ip_blocked", "detail": detail[:200]}
+        return {"sent": False, "reason": "brevo_api_failed", "detail": detail[:200]}
+    except Exception:
+        logger.exception("Brevo API email error to %s", to)
+        return {"sent": False, "reason": "brevo_api_failed"}
+
+
+def _send_via_smtp(*, to: str, subject: str, body: str, timeout_s: float) -> dict:
+    if not (SMTP_HOST and SMTP_PASSWORD):
         return {"sent": False, "reason": "smtp_not_configured"}
-    if not to:
-        return {"sent": False, "reason": "no_recipient"}
     msg = MIMEText(body, "plain", "utf-8")
     msg["Subject"] = subject
     msg["From"] = SMTP_FROM
     msg["To"] = to
-    # Keep timeout short so signup/login is not blocked when Brevo rejects the IP.
+    timeout = max(4.0, float(timeout_s))
     try:
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=4) as server:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=timeout) as server:
             if SMTP_USE_TLS:
                 server.starttls()
             if SMTP_USER and SMTP_PASSWORD:
                 server.login(SMTP_USER, SMTP_PASSWORD)
             server.sendmail(SMTP_FROM, [to], msg.as_string())
-        logger.info("Email sent to %s: %s", to, subject)
-        return {"sent": True}
+        logger.info("SMTP email sent to %s: %s", to, subject)
+        return {"sent": True, "provider": "smtp"}
     except smtplib.SMTPAuthenticationError as exc:
         logger.exception("SMTP authentication failed for user %s", SMTP_USER)
         err = str(exc.args[-1] if exc.args else exc).lower()
-        if "unauthorized ip" in err or exc.smtp_code == 525:
+        if "unauthorized ip" in err or getattr(exc, "smtp_code", None) == 525:
             return {"sent": False, "reason": "smtp_ip_blocked"}
         return {"sent": False, "reason": "smtp_auth_failed"}
     except (TimeoutError, OSError, smtplib.SMTPException):
@@ -60,6 +100,28 @@ def send_email_detailed(*, to: str, subject: str, body: str) -> dict:
     except Exception:
         logger.exception("Failed to send email to %s", to)
         return {"sent": False, "reason": "send_failed"}
+
+
+def send_email_detailed(*, to: str, subject: str, body: str, timeout_s: float = 12.0) -> dict:
+    if not smtp_configured():
+        logger.info("Email (not sent — SMTP not configured): to=%s subject=%s", to, subject)
+        return {"sent": False, "reason": "smtp_not_configured"}
+    if not to:
+        return {"sent": False, "reason": "no_recipient"}
+
+    if BREVO_API_KEY:
+        api_result = _send_via_brevo_api(to=to, subject=subject, body=body, timeout_s=timeout_s)
+        if api_result.get("sent"):
+            return api_result
+
+    smtp_result = _send_via_smtp(to=to, subject=subject, body=body, timeout_s=timeout_s)
+    if smtp_result.get("sent"):
+        return smtp_result
+
+    if smtp_result.get("reason") == "smtp_ip_blocked" and BREVO_API_KEY:
+        return _send_via_brevo_api(to=to, subject=subject, body=body, timeout_s=timeout_s)
+
+    return smtp_result
 
 
 def send_email(*, to: str, subject: str, body: str) -> bool:

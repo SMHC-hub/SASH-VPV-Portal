@@ -19,6 +19,9 @@ class OnboardingState {
 
   bool get needsKyc => profile != null && !profile!.kycApproved;
 
+  bool get needsSpendingPin =>
+      profile != null && profile!.kycApproved && !profile!.spendingPinSet;
+
   bool get needsPalm =>
       profile != null && profile!.kycApproved && !profile!.palmEnrolled;
 

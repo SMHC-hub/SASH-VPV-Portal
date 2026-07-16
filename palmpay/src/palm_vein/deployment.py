@@ -64,7 +64,7 @@ class CaptureQualityError(Exception):
 # is the operating threshold where FAR == FRR on that evaluation - a real
 # deployment would instead pick a threshold from the GAR@FAR table for the
 # desired security level (e.g. GAR@FAR=1%), not necessarily the EER point.
-DEFAULT_THRESHOLD = 0.40
+DEFAULT_THRESHOLD = 0.32
 
 
 class PalmVeinBiometricSystem:
