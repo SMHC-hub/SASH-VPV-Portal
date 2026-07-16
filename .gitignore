@@ -41,8 +41,10 @@ training/gpu/
 Thumbs.db
 .DS_Store
 
-# Requested project-level ignores
-docs/
+# Requested project-level ignores (keep README screenshot gallery)
+docs/*
+!docs/screenshots/
+!docs/screenshots/**
 doc/
 archive/
 plan.md
