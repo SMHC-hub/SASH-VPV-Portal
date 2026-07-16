@@ -32,12 +32,20 @@ def _new_ref(prefix: str) -> str:
 
 
 def ensure_wallet_settings(wallet: models.PalmPayWallet) -> None:
-    if wallet.spending_pin_hash is None:
+    # Do not silently assign the default PIN in production.
+    # Only fill a missing pin when explicitly in DEV OTP mode (tests / local demos).
+    from backend.settings import PALMPAY_DEV_OTP, PALMPAY_DEV_SPENDING_PIN
+
+    if wallet.spending_pin_hash is None and PALMPAY_DEV_OTP:
         wallet.spending_pin_hash = hash_spending_pin(PALMPAY_DEV_SPENDING_PIN)
 
 
 def get_or_create_wallet(db: Session, account: models.PalmPayAccount) -> models.PalmPayWallet:
     wallet = account.wallet
+    if wallet is None:
+        wallet = db.execute(
+            select(models.PalmPayWallet).where(models.PalmPayWallet.account_id == account.id)
+        ).scalar_one_or_none()
     if wallet is None:
         wallet = models.PalmPayWallet(
             account_id=account.id,
@@ -229,6 +237,11 @@ def confirm_transfer(
         raise HTTPException(status_code=410, detail="Transfer preview expired — start again")
 
     sender_wallet = get_or_create_wallet(db, sender)
+    if not sender_wallet.spending_pin_hash:
+        raise HTTPException(
+            status_code=400,
+            detail="Set your payment PIN before sending money",
+        )
     if not verify_spending_pin(spending_pin, sender_wallet.spending_pin_hash):
         raise HTTPException(status_code=401, detail="Incorrect spending PIN")
 

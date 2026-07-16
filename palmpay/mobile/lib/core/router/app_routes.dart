@@ -8,6 +8,7 @@ abstract final class AppRoutes {
   static const signupVerifyEmail = '/signup/verify-email';
   static const signupPin = '/signup/pin';
   static const kyc = '/kyc';
+  static const setupSpendingPin = '/onboarding/payment-pin';
   static const palmEnroll = '/palm-enroll';
   static const enrollSuccess = '/enroll-success';
   static const home = '/home';

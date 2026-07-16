@@ -220,7 +220,7 @@ export function LivePreview() {
             <p>
               Production match threshold:{" "}
               <span className="font-mono text-[var(--foreground)]">
-                {publicStats.data?.match_threshold.toFixed(3) ?? "0.400"}
+                {publicStats.data?.match_threshold.toFixed(3) ?? "0.320"}
               </span>
             </p>
           </CardContent>

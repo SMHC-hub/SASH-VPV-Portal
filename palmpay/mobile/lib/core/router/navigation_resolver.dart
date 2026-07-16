@@ -17,6 +17,7 @@ bool isAuthRoute(String loc) {
 
 bool isOnboardingRoute(String loc) {
   return loc == AppRoutes.kyc ||
+      loc == AppRoutes.setupSpendingPin ||
       loc == AppRoutes.palmEnroll ||
       loc == AppRoutes.enrollSuccess;
 }
@@ -27,8 +28,8 @@ String? resolveNextRoute({
 }) {
   if (auth.status == AuthStatus.unknown || !onboarding.loaded) return null;
   if (!auth.isAuthenticated) return AppRoutes.login;
-  if (onboarding.isComplete) return AppRoutes.home;
   if (onboarding.needsKyc) return AppRoutes.kyc;
-  if (onboarding.needsPalm) return AppRoutes.palmEnroll;
+  if (onboarding.needsSpendingPin) return AppRoutes.setupSpendingPin;
+  if (onboarding.isComplete) return AppRoutes.home;
   return AppRoutes.home;
 }

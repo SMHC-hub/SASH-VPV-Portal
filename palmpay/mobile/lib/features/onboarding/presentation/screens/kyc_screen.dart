@@ -123,7 +123,13 @@ class _KycScreenState extends ConsumerState<KycScreen> {
           );
       await ref.read(onboardingControllerProvider.notifier).refresh();
       if (!mounted) return;
-      context.go(AppRoutes.palmEnroll);
+      // Router sends Google/new users to payment PIN when needed.
+      final onboarding = ref.read(onboardingControllerProvider);
+      if (onboarding.needsSpendingPin) {
+        context.go(AppRoutes.setupSpendingPin);
+      } else {
+        context.go(AppRoutes.home);
+      }
     } on DioException catch (e) {
       setState(() => _error = dioErrorMessage(e));
     } finally {
@@ -141,7 +147,7 @@ class _KycScreenState extends ConsumerState<KycScreen> {
           children: [
             const PpScreenHeader(
               title: 'KYC verification',
-              subtitle: 'CNIC and photo - auto-approved in dev mode',
+              subtitle: 'Upload your CNIC to verify identity before using the wallet',
             ),
             TextField(
               controller: _nameController,

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import random
 import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Optional
@@ -13,7 +12,7 @@ from sqlalchemy import delete, func, select
 from sqlalchemy.orm import Session
 
 from backend.auth.palmpay_phone import mask_phone, normalize_pk_phone
-from backend.auth.palmpay_pin import hash_spending_pin
+from backend.auth.palmpay_otp_delivery import issue_phone_otp, maybe_dev_otp
 from backend.auth.passwords import hash_password
 from backend.auth.palmpay_tokens import (
     create_palmpay_access_token,
@@ -26,11 +25,9 @@ from backend.deps import get_db
 from backend.deps_palmpay_auth import get_current_palmpay_account
 from backend.settings import (
     PALMPAY_DEV_OTP,
-    PALMPAY_DEV_SPENDING_PIN,
     PALMPAY_LOCKOUT_MINUTES,
     PALMPAY_OTP_MAX_ATTEMPTS,
     PALMPAY_OTP_MAX_PER_HOUR,
-    PALMPAY_OTP_TTL_S,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,10 +37,6 @@ router = APIRouter(prefix="/api/palmpay/auth", tags=["palmpay-auth"])
 
 def _utcnow() -> datetime:
     return datetime.now(timezone.utc).replace(tzinfo=None)
-
-
-def _generate_otp() -> str:
-    return f"{random.randint(0, 999999):06d}"
 
 
 def _generate_wallet_number() -> str:
@@ -91,6 +84,7 @@ class TokenResponse(BaseModel):
     wallet_account_number: str
     balance_pkr: float
     needs_login_pin_setup: bool = False
+    needs_spending_pin_setup: bool = False
 
 
 class RefreshTokenRequest(BaseModel):
@@ -124,7 +118,13 @@ def _build_token_response(
     refresh: str,
     *,
     needs_login_pin_setup: bool = False,
+    needs_spending_pin_setup: bool | None = None,
 ) -> TokenResponse:
+    spending_needed = (
+        needs_spending_pin_setup
+        if needs_spending_pin_setup is not None
+        else wallet.spending_pin_hash is None
+    )
     return TokenResponse(
         access_token=access,
         refresh_token=refresh,
@@ -135,6 +135,7 @@ def _build_token_response(
         wallet_account_number=wallet.account_number,
         balance_pkr=float(wallet.balance_pkr),
         needs_login_pin_setup=needs_login_pin_setup,
+        needs_spending_pin_setup=bool(spending_needed),
     )
 
 
@@ -207,18 +208,26 @@ def register_phone(body: PhoneRegisterRequest, db: Session = Depends(get_db)) ->
     if int(recent_count or 0) >= PALMPAY_OTP_MAX_PER_HOUR:
         raise HTTPException(status_code=429, detail="Too many OTP requests. Try again in an hour.")
 
-    code = _generate_otp()
-    expires = _utcnow() + timedelta(seconds=PALMPAY_OTP_TTL_S)
-    db.add(models.PalmPayOtpCode(phone=phone, code=code, expires_at=expires))
+    notify_email = account.email if account and account.email else None
+    code, _ = issue_phone_otp(db, phone=phone, notify_email=notify_email)
     db.commit()
 
-    logger.info("PalmPay OTP for %s: %s (dev=%s)", mask_phone(phone), code, PALMPAY_DEV_OTP)
+    logger.info(
+        "PalmPay phone OTP issued for %s (dev=%s emailed=%s)",
+        mask_phone(phone),
+        PALMPAY_DEV_OTP,
+        bool(notify_email),
+    )
 
     return PhoneRegisterResponse(
         success=True,
-        message="OTP sent to your phone",
+        message=(
+            "OTP sent to your email on file"
+            if notify_email
+            else "OTP issued"
+        ),
         phone_masked=mask_phone(phone),
-        dev_otp=code if PALMPAY_DEV_OTP else None,
+        dev_otp=maybe_dev_otp(code),
     )
 
 
@@ -251,7 +260,7 @@ def verify_otp(body: VerifyOtpRequest, db: Session = Depends(get_db)) -> TokenRe
             account_id=account.id,
             balance_pkr=0.0,
             account_number=_generate_wallet_number(),
-            spending_pin_hash=hash_spending_pin(PALMPAY_DEV_SPENDING_PIN),
+            spending_pin_hash=None,
         )
         db.add(wallet)
         db.flush()
@@ -268,6 +277,7 @@ def verify_otp(body: VerifyOtpRequest, db: Session = Depends(get_db)) -> TokenRe
         access,
         refresh,
         needs_login_pin_setup=needs_pin,
+        needs_spending_pin_setup=wallet.spending_pin_hash is None,
     )
 
 
@@ -294,7 +304,7 @@ def refresh_tokens(body: RefreshTokenRequest, db: Session = Depends(get_db)) -> 
             account_id=account.id,
             balance_pkr=0.0,
             account_number=_generate_wallet_number(),
-            spending_pin_hash=hash_spending_pin(PALMPAY_DEV_SPENDING_PIN),
+            spending_pin_hash=None,
         )
         db.add(wallet)
         db.flush()
@@ -408,6 +418,17 @@ register_email_auth_routes(
     {
         "issue_token_pair": _issue_token_pair,
         "generate_wallet_number": _generate_wallet_number,
+        "build_token_response": _build_token_response,
+        "TokenResponse": TokenResponse,
+    },
+)
+
+from backend.routes.palmpay_auth_google import register_google_auth_routes
+
+register_google_auth_routes(
+    router,
+    {
+        "issue_token_pair": _issue_token_pair,
         "build_token_response": _build_token_response,
         "TokenResponse": TokenResponse,
     },

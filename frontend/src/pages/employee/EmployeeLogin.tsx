@@ -218,6 +218,11 @@ export function EmployeeLogin() {
           <Link to="/user/login" className="hover:text-[var(--primary)] hover:underline">
             Member sign in
           </Link>
+          {" · "}
+          Shop owner?{" "}
+          <Link to="/owner/login" className="hover:text-[var(--primary)] hover:underline">
+            Shop owner sign in
+          </Link>
         </p>
       </div>
     </AuthLayout>

@@ -46,7 +46,9 @@ class TopUpSuccessScreen extends StatelessWidget {
                 const Spacer(flex: 2),
                 PpButton(
                   label: 'Done',
-                  onPressed: () => context.go(AppRoutes.home),
+                  onPressed: () {
+                    if (context.mounted) context.go(AppRoutes.home);
+                  },
                 ),
             ],
           ),

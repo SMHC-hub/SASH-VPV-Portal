@@ -302,9 +302,14 @@ class ProfileScreen extends ConsumerWidget {
                   contentPadding: EdgeInsets.zero,
                   leading: Icon(Icons.fingerprint, color: pp.mintDark),
                   title: Text('Palm enrollment', style: TextStyle(color: cs.onSurface)),
-                  subtitle: Text('Manage enrolled palm', style: AppTextStyles.label(context)),
+                  subtitle: Text(
+                    ref.watch(onboardingControllerProvider).needsPalm
+                        ? 'Not enrolled — get a kiosk code on Scan'
+                        : 'Manage enrolled palm',
+                    style: AppTextStyles.label(context),
+                  ),
                   trailing: const Icon(Icons.chevron_right),
-                  onTap: () {},
+                  onTap: () => context.go(AppRoutes.scan),
                 ),
               ],
             ),

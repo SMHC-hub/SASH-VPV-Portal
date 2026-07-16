@@ -71,11 +71,32 @@ class AuthController extends StateNotifier<AuthState> {
     _ref.read(authRefreshListenableProvider).refresh();
   }
 
+  Future<void> applySession(AuthSession session) async {
+    await _persistSession(session);
+  }
+
+  Future<AuthSession> setSpendingPin(String loginPin) async {
+    final session = await _repo.setLoginPin(
+      loginPin: loginPin,
+      useSamePinForSpending: true,
+    );
+    await _persistSession(session);
+    return session;
+  }
+
   Future<void> loginWithEmail({
     required String email,
     required String password,
   }) async {
     final session = await _repo.loginWithEmail(email: email, password: password);
+    await _persistSession(session);
+  }
+
+  Future<void> loginWithGoogle({
+    required String credential,
+    required String intent,
+  }) async {
+    final session = await _repo.loginWithGoogle(credential: credential, intent: intent);
     await _persistSession(session);
   }
 

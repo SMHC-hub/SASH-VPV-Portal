@@ -15,7 +15,7 @@ engine = create_engine(
     DB_URL,
     echo=False,
     future=True,
-    connect_args={"check_same_thread": False},
+    connect_args={"check_same_thread": False, "timeout": 15},
 )
 
 
@@ -24,6 +24,7 @@ def _enable_sqlite_fks(dbapi_conn, _record) -> None:
     """SQLite needs FK enforcement enabled explicitly per connection."""
     cur = dbapi_conn.cursor()
     cur.execute("PRAGMA foreign_keys=ON")
+    cur.execute("PRAGMA journal_mode=WAL")
     cur.close()
 
 

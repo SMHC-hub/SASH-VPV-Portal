@@ -11,7 +11,7 @@ interface ConfidenceBarProps {
 /**
  * Visualises a cosine-similarity score relative to the threshold. The bar
  * fills 0..1 to map similarity, with a vertical marker showing the decision
- * threshold (0.40 by default).
+ * threshold (0.32 by default).
  */
 export function ConfidenceBar({
   similarity,

@@ -39,8 +39,13 @@ export function parseShopError(err: unknown, fallback: string): string {
   const detail = ax?.response?.data?.detail
   if (typeof detail === "string") return detail
   if (detail && typeof detail === "object" && !Array.isArray(detail)) {
-    const d = detail as { message?: string }
-    if (typeof d.message === "string") return d.message
+    const d = detail as { message?: string; confidence?: number; required?: number }
+    if (typeof d.message === "string") {
+      if (typeof d.confidence === "number" && typeof d.required === "number") {
+        return `${d.message} (${Math.round(d.confidence * 100)}% — need ≥ ${Math.round(d.required * 100)}%)`
+      }
+      return d.message
+    }
   }
   if (Array.isArray(detail) && detail[0] && typeof (detail[0] as { msg?: string }).msg === "string") {
     return (detail[0] as { msg: string }).msg

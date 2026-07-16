@@ -1,9 +1,12 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { CheckCircle2, Loader2, ScanLine } from "lucide-react"
+import { CheckCircle2, Loader2 } from "lucide-react"
 
 import { CustomerPageHeader } from "@/components/customer/CustomerPageHeader"
+import { LiveFeedFrame } from "@/components/GlassPanel"
+import { LiveFeed } from "@/components/LiveFeed"
+import { LiveFeedToolbar } from "@/components/LiveFeedToolbar"
 import { Button } from "@/components/ui/button"
 import { endpoints } from "@/lib/api"
 import { formatPkr, parseShopError } from "@/lib/shopUtils"
@@ -17,9 +20,11 @@ export function CheckoutPage() {
   const [error, setError] = useState<string | null>(null)
   const [orderId, setOrderId] = useState<number | null>(null)
   const [orderNumber, setOrderNumber] = useState<string | null>(null)
+  const [matchThreshold, setMatchThreshold] = useState(0.32)
   const [receipt, setReceipt] = useState<{
     total_pkr: number
     new_balance_pkr?: number | null
+    palm_confidence?: number | null
     message: string
   } | null>(null)
 
@@ -33,6 +38,9 @@ export function CheckoutPage() {
     onSuccess: (data) => {
       setOrderId(data.order_id)
       setOrderNumber(data.order_number)
+      if (typeof data.confidence_required === "number") {
+        setMatchThreshold(data.confidence_required)
+      }
       setStep("scan")
       setError(null)
     },
@@ -42,20 +50,27 @@ export function CheckoutPage() {
   const pay = useMutation({
     mutationFn: async () => {
       if (!orderId) throw new Error("No order")
-      // Production: replace with live NIR identify confidence for this account.
-      // Backend enforces ≥ 0.97 and enrolled palm + wallet debit.
-      return endpoints.checkout.palmPay(orderId, 0.98, "web-checkout")
+      return endpoints.checkout.palmPay(orderId)
     },
     onSuccess: (data) => {
       setReceipt({
         total_pkr: data.total_pkr,
         new_balance_pkr: data.new_balance_pkr,
+        palm_confidence: data.palm_confidence,
         message: data.message,
       })
       setStep("done")
+      setError(null)
       void qc.invalidateQueries({ queryKey: ["cart"] })
     },
-    onError: (e) => setError(parseShopError(e, "Payment failed")),
+    onError: (e) => {
+      const msg = parseShopError(e, "Payment failed")
+      setError(
+        msg.includes("timeout")
+          ? "Scan timed out — hold palm steady on the scanner and try again."
+          : msg,
+      )
+    },
   })
 
   const cancel = useMutation({
@@ -88,6 +103,11 @@ export function CheckoutPage() {
           <p className="text-lg font-semibold text-[var(--primary)]">
             VeinPay debited {formatPkr(receipt.total_pkr)}
           </p>
+          {receipt.palm_confidence != null && (
+            <p className="text-sm text-[var(--muted-foreground)]">
+              Palm match: {Math.round(receipt.palm_confidence * 100)}%
+            </p>
+          )}
           {receipt.new_balance_pkr != null && (
             <p className="text-sm text-[var(--muted-foreground)]">
               New balance: {formatPkr(receipt.new_balance_pkr)}
@@ -100,22 +120,30 @@ export function CheckoutPage() {
         </div>
       ) : step === "scan" ? (
         <div className="customer-card space-y-4 p-6">
-          <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-[var(--border)] bg-[var(--muted)]/40 py-10">
-            <ScanLine className="size-10 text-[var(--primary)]" />
-            <p className="font-medium">Place your palm on the scanner</p>
-            <p className="max-w-sm text-center text-xs text-[var(--muted-foreground)]">
-              Order {orderNumber} · Confidence required ≥ 97%
-            </p>
-          </div>
+          <LiveFeedToolbar className="mb-2" showDistance />
+          <LiveFeedFrame>
+            <LiveFeed size="standard" />
+          </LiveFeedFrame>
+          <p className="text-center text-sm font-medium">Place your palm on the scanner</p>
+          <p className="text-center text-xs text-[var(--muted-foreground)]">
+            Order {orderNumber} · Live 1:1 vein match required (cosine ≥{" "}
+            {matchThreshold.toFixed(2)} / {Math.round(matchThreshold * 100)}%) before VeinPay debit
+          </p>
           {error && <p className="text-sm text-[var(--destructive)]">{error}</p>}
           <div className="flex flex-wrap gap-2">
             <Button className="btn-brand" disabled={pay.isPending} onClick={() => pay.mutate()}>
-              {pay.isPending ? <Loader2 className="size-4 animate-spin" /> : null}
-              Scan &amp; Pay {v ? formatPkr(v.cart_total) : ""}
+              {pay.isPending ? (
+                <>
+                  <Loader2 className="size-4 animate-spin" />
+                  Scanning &amp; matching…
+                </>
+              ) : (
+                <>Scan &amp; Pay {v ? formatPkr(v.cart_total) : ""}</>
+              )}
             </Button>
             <Button
               variant="outline"
-              disabled={!orderId || cancel.isPending}
+              disabled={!orderId || cancel.isPending || pay.isPending}
               onClick={() => cancel.mutate()}
             >
               Cancel

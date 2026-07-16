@@ -45,6 +45,7 @@ export function Login({ employeeMode = false, customerMode = false }: { employee
 
   const afterLogin = (role?: string) => {
     if (role === "admin") return "/dashboard"
+    if (role === "shop_owner") return "/owner/dashboard"
     if (role === "customer" || customerMode) return "/"
     if (employeeMode) return "/employee/dashboard"
     if (role === "employee") return "/employee/dashboard"
@@ -250,6 +251,11 @@ export function Login({ employeeMode = false, customerMode = false }: { employee
               Member?{" "}
               <Link to="/user/login" className="hover:text-[var(--primary)] hover:underline">
                 Member sign in
+              </Link>
+              {" · "}
+              Shop owner?{" "}
+              <Link to="/owner/login" className="hover:text-[var(--primary)] hover:underline">
+                Shop owner sign in
               </Link>
             </>
           )}

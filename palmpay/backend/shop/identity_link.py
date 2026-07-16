@@ -272,7 +272,7 @@ def ensure_web_account_for_palmpay(
         n += 1
         dataset_name = f"{base_dataset[:100]}_{n}"
 
-    folder_id = next_folder_id()
+    folder_id = next_folder_id(db)
     pwd = palmpay_account.password_hash or hash_password(secrets.token_urlsafe(24))
 
     account = models.Account(

@@ -161,6 +161,9 @@ export function HomePage() {
               <Button asChild size="lg" variant="outline" className="backdrop-blur-sm">
                 <Link to={secondaryCta}>{secondaryLabel}</Link>
               </Button>
+              <Button asChild size="lg" variant="secondary" className="backdrop-blur-sm">
+                <Link to="/kiosk/enroll">Web Kiosk</Link>
+              </Button>
             </div>
             <div className="mt-8 flex flex-wrap gap-2">
               {["Liveness-safe", "512-d embeddings", "Audit trail", "GPU-ready"].map((tag) => (

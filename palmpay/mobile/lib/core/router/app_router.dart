@@ -15,6 +15,7 @@ import '../../features/onboarding/presentation/providers/onboarding_provider.dar
 import '../../features/onboarding/presentation/screens/enrollment_success_screen.dart';
 import '../../features/onboarding/presentation/screens/kyc_screen.dart';
 import '../../features/onboarding/presentation/screens/palm_enrollment_screen.dart';
+import '../../features/onboarding/presentation/screens/setup_spending_pin_screen.dart';
 import '../../features/onboarding/presentation/screens/splash_screen.dart';
 import '../../features/scan/presentation/screens/scan_result_failed_screen.dart';
 import '../../features/scan/presentation/screens/scan_result_low_balance_screen.dart';
@@ -69,20 +70,22 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         return null;
       }
 
-      if (onboarding.isComplete) {
-        if (isAuthRoute(loc) || loc == AppRoutes.kyc || loc == AppRoutes.palmEnroll) {
-          return AppRoutes.home;
-        }
-        return null;
-      }
-
       if (onboarding.needsKyc) {
         return loc == AppRoutes.kyc ? null : AppRoutes.kyc;
       }
 
-      if (onboarding.needsPalm) {
-        if (loc == AppRoutes.palmEnroll || loc == AppRoutes.enrollSuccess) return null;
-        return AppRoutes.palmEnroll;
+      if (onboarding.needsSpendingPin) {
+        return loc == AppRoutes.setupSpendingPin ? null : AppRoutes.setupSpendingPin;
+      }
+
+      // KYC + payment PIN done → main app. Palm enrollment is optional in Scan tab.
+      if (onboarding.isComplete) {
+        if (isAuthRoute(loc) ||
+            loc == AppRoutes.kyc ||
+            loc == AppRoutes.setupSpendingPin) {
+          return AppRoutes.home;
+        }
+        return null;
       }
 
       return resolveNextRoute(auth: auth, onboarding: onboarding);
@@ -135,6 +138,11 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.kyc,
         parentNavigatorKey: _rootNavigatorKey,
         builder: (context, state) => const KycScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.setupSpendingPin,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) => const SetupSpendingPinScreen(),
       ),
       GoRoute(
         path: AppRoutes.palmEnroll,
@@ -259,8 +267,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     ],
   );
 
-  ref.listen(authControllerProvider, (_, __) => Future.microtask(router.refresh));
-  ref.listen(onboardingControllerProvider, (_, __) => Future.microtask(router.refresh));
   ref.onDispose(router.dispose);
   return router;
 });

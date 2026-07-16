@@ -84,12 +84,19 @@ export function OwnerLoginPage() {
           </Button>
         </form>
         <p className="text-center text-xs text-[var(--muted-foreground)]">
-          <Link to="/" className="underline">
-            Back to home
+          Admin?{" "}
+          <Link to="/login" className="hover:text-[var(--primary)] hover:underline">
+            Admin sign in
           </Link>
           {" · "}
-          <Link to="/employee/login" className="underline">
-            Employee login
+          Employee?{" "}
+          <Link to="/employee/login" className="hover:text-[var(--primary)] hover:underline">
+            Employee sign in
+          </Link>
+          {" · "}
+          Member?{" "}
+          <Link to="/user/login" className="hover:text-[var(--primary)] hover:underline">
+            Member sign in
           </Link>
         </p>
       </div>

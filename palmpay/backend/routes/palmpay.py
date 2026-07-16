@@ -36,6 +36,8 @@ class PalmPayProfileResponse(BaseModel):
     palm_enrolled: bool
     phone: str
     full_name: str
+    spending_pin_set: bool = False
+    needs_spending_pin_setup: bool = False
     message: str
 
 
@@ -72,6 +74,7 @@ def palmpay_profile(
 ) -> PalmPayProfileResponse:
     wallet = account.wallet
     enrolled = _account_palm_enrolled(db, account.id)
+    spending_set = bool(wallet and wallet.spending_pin_hash)
 
     return PalmPayProfileResponse(
         wallet_id=wallet.account_number if wallet else None,
@@ -80,5 +83,7 @@ def palmpay_profile(
         palm_enrolled=enrolled,
         phone=account.phone,
         full_name=account.full_name,
+        spending_pin_set=spending_set,
+        needs_spending_pin_setup=not spending_set,
         message="Wallet profile loaded",
     )

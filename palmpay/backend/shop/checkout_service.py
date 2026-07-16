@@ -9,16 +9,22 @@ from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
+from backend.auth.template_cache import secure_match_for_account
 from backend.db import models
+from backend.device.singleton import get_device, get_fresh_frame
+from backend.matcher.singleton import embed_png_bytes
+from backend.settings import LOGIN_MATCH_MIN_MARGIN, LOGIN_MATCH_THRESHOLD, USERS_REF_DIR
 from backend.shop.cart_service import PLATFORM_FEE_PKR, clear_cart, get_or_create_cart, serialize_cart
 from backend.shop.identity_link import get_linked_wallet, resolve_or_link_palmpay_by_email
 from backend.utils.wallet_cache import invalidate_wallet_cache
 from backend.wallet.palmpay_wallet_service import _new_ref, _write_ledger, get_or_create_wallet
 
+from xrtech_device import save_frame_png  # noqa: E402
+
 logger = logging.getLogger(__name__)
 
-# Non-negotiable: payment palm match must be ≥ 97%
-SHOP_PALM_CONFIDENCE_MIN = 0.97
+# Same cosine threshold as recognition / palm login (default LOGIN_MATCH_THRESHOLD)
+SHOP_PALM_CONFIDENCE_MIN = LOGIN_MATCH_THRESHOLD
 ORDER_LOCK_TTL_MINUTES = 15
 MAX_SCAN_ATTEMPTS = 3
 
@@ -56,6 +62,43 @@ def _new_order_number() -> str:
 
 def _palm_enrolled(account: models.Account) -> bool:
     return account.left_template is not None or account.right_template is not None
+
+
+def _scan_checkout_palm(account: models.Account) -> tuple[float, str, str | None]:
+    """Capture live NIR frame, 1:1 match against account templates. Returns (confidence, scan_event_id, error)."""
+    device = get_device()
+    if not device.is_connected():
+        raise HTTPException(
+            status_code=503,
+            detail="Scanner not connected — plug in the palm scanner and retry",
+        )
+
+    raw = get_fresh_frame()
+    if not raw:
+        return 0.0, "", "No palm detected — hold hand 3–8 cm above the sensor until veins appear"
+
+    ts = _utcnow().strftime("%Y%m%d_%H%M%S_%f")[:-3]
+    scan_event_id = f"checkout_{ts}"
+    probe_path = USERS_REF_DIR / "_captures" / f"{scan_event_id}.png"
+    probe_path.parent.mkdir(parents=True, exist_ok=True)
+    save_frame_png(raw, probe_path)
+
+    try:
+        probe = embed_png_bytes(raw)
+    except Exception as exc:
+        logger.warning("Checkout probe embedding failed: %s", exc)
+        return 0.0, scan_event_id, f"Could not process palm image: {exc}"
+
+    match = secure_match_for_account(
+        probe,
+        account.id,
+        threshold=SHOP_PALM_CONFIDENCE_MIN,
+        min_margin=LOGIN_MATCH_MIN_MARGIN,
+    )
+    confidence = float(max(0.0, match.similarity))
+    if match.matched:
+        return confidence, scan_event_id, None
+    return confidence, scan_event_id, match.reason or "Palm not recognized — try again"
 
 
 def expire_stale_orders(db: Session, customer_id: int | None = None) -> int:
@@ -267,7 +310,7 @@ def palm_pay_order(
     account: models.Account,
     *,
     order_id: int,
-    confidence: float,
+    confidence: float | None = None,
     scan_event_id: str | None = None,
 ) -> dict:
     expire_stale_orders(db, account.id)
@@ -295,11 +338,18 @@ def palm_pay_order(
         db.flush()
         raise HTTPException(status_code=410, detail="Order expired — stock released, retry checkout")
 
+    if not _palm_enrolled(account):
+        raise HTTPException(status_code=400, detail="Palm not enrolled")
+
+    scanned_conf, scanned_event, scan_err = _scan_checkout_palm(account)
+    confidence = scanned_conf
+    scan_event_id = scanned_event or scan_event_id
+
     order.scan_attempts = int(order.scan_attempts) + 1
     order.palm_confidence = confidence
     order.updated_at = _utcnow()
 
-    if confidence < SHOP_PALM_CONFIDENCE_MIN:
+    if scan_err or confidence < SHOP_PALM_CONFIDENCE_MIN:
         if order.scan_attempts >= MAX_SCAN_ATTEMPTS:
             _release_stock(db, order)
             order.status = "cancelled"
@@ -319,7 +369,7 @@ def palm_pay_order(
         raise HTTPException(
             status_code=400,
             detail={
-                "message": "Palm not recognized. Try again",
+                "message": scan_err or "Palm not recognized. Try again",
                 "code": "low_confidence",
                 "confidence": confidence,
                 "required": SHOP_PALM_CONFIDENCE_MIN,
@@ -327,9 +377,6 @@ def palm_pay_order(
                 "attempts_remaining": MAX_SCAN_ATTEMPTS - order.scan_attempts,
             },
         )
-
-    if not _palm_enrolled(account):
-        raise HTTPException(status_code=400, detail="Palm not enrolled")
 
     pp = resolve_or_link_palmpay_by_email(db, account, commit=False)
     if pp is None:

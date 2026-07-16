@@ -3,7 +3,7 @@
 The neural matcher (EfficientNet-B0 + CBAM + ArcFace-trained head) produces
 L2-normalised 512-d embeddings, so cosine similarity is just a dot product.
 The accept/reject threshold is the production EER threshold from
-`palm_vein.deployment.DEFAULT_THRESHOLD` (0.40).
+`palm_vein.deployment.DEFAULT_THRESHOLD` (0.32).
 """
 from __future__ import annotations
 

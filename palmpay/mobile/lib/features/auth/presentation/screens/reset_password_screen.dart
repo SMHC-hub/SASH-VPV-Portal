@@ -32,15 +32,6 @@ class _ResetPasswordScreenState extends ConsumerState<ResetPasswordScreen> {
   @override
   void initState() {
     super.initState();
-    final draft = ref.read(passwordResetProvider);
-    if (draft?.devOtp != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Dev reset code: ${draft!.devOtp}')),
-        );
-      });
-    }
   }
 
   @override

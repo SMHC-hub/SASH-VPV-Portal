@@ -1072,13 +1072,9 @@ export const endpoints = {
       api.post<CheckoutValidateResponse>("/api/checkout/validate").then((r) => r.data),
     initiate: () =>
       api.post<CheckoutInitiateResponse>("/api/checkout/initiate").then((r) => r.data),
-    palmPay: (order_id: number, confidence: number, scan_event_id?: string) =>
+    palmPay: (order_id: number) =>
       api
-        .post<CheckoutPalmPayResponse>("/api/checkout/palm-pay", {
-          order_id,
-          confidence,
-          scan_event_id,
-        })
+        .post<CheckoutPalmPayResponse>("/api/checkout/palm-pay", { order_id }, { timeout: 120_000 })
         .then((r) => r.data),
     cancel: (orderId: number) =>
       api.post<{ success: boolean; order_id: number; status: string; message: string }>(

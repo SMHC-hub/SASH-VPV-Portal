@@ -30,6 +30,8 @@ abstract final class ApiConfig {
   static const publicStats = '/api/public/stats';
   static const authRegisterPhone = '/api/palmpay/auth/register/phone';
   static const authLoginEmail = '/api/palmpay/auth/login/email';
+  static const authGoogleConfig = '/api/palmpay/auth/google/config';
+  static const authGoogle = '/api/palmpay/auth/google';
   static const authForgotPassword = '/api/palmpay/auth/password/forgot';
   static const authResetPassword = '/api/palmpay/auth/password/reset';
   static const authSignupStart = '/api/palmpay/auth/register/signup-start';
