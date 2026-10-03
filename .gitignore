@@ -1,4 +1,4 @@
-__pycache__/
+﻿__pycache__/
 *.py[cod]
 venv/
 .venv/
@@ -42,7 +42,7 @@ Thumbs.db
 .DS_Store
 
 # Requested project-level ignores (keep README screenshot gallery)
-docs/*
+# docs/*
 !docs/screenshots/
 !docs/screenshots/**
 doc/
@@ -53,3 +53,4 @@ setup.md
 Setup.md
 plan_vein_project_2day_schedule.xlsx
 Palm_Vein_Project_2Day_Schedule.xlsx
+

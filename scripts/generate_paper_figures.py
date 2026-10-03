@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Generate IEEE-style publication SVG figures from research_pipeline.json."""
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "paper_figures"
-PIPELINE = ROOT / "research_pipeline.json"
+PIPELINE = ROOT / "docs" / "research_pipeline.json"
 
 # IEEE academic monochrome palette
 C_BG = "#FFFFFF"
@@ -449,3 +449,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

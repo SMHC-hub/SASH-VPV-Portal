@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """Generate SASH-VPV FYP poster document from mock FYP.docx template."""
 from __future__ import annotations
 
@@ -11,8 +11,8 @@ from docx import Document
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-TEMPLATE = ROOT / "FYP.docx"
-OUTPUT = ROOT / "SASH-VPV_FYP.docx"
+TEMPLATE = ROOT / "docs" / "FYP.docx"
+OUTPUT = ROOT / "docs" / "SASH-VPV_FYP.docx"
 
 TITLE = (
     "SASH-VPV: Contactless Palm Vein Recognition and Biometric Payment Platform "
@@ -144,3 +144,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
