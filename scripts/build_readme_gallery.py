@@ -8,16 +8,6 @@ README = ROOT / "README.md"
 
 HEADER = """# SASH-VPV Portal
 
-## Project team
-
-**University:** National University of Technology (NUTECH), Islamabad
-
-| Role | Name | Email |
-|------|------|-------|
-| Project Lead | Syed Muhamamd Huzaifa Chishty | muhammadhuzaifaf22@nutech.edu.pk |
-| Member | Shanza Rahim | shanzarahimf22@nutech.edu.pk |
-| Supervisor | Dr. Benish Fida (HoD Artificial Intelligence) | benish.fida@nutech.edu.pk |
-
 **Dataset:** [SASH-VPV on Kaggle](https://www.kaggle.com/datasets/sashinoventures/sash-vpv-subcutaneous-vascular-palm-vein-data) — full corpus (2,667 images, 122 subjects) in `data/raw/img/`
 
 ## Project layout

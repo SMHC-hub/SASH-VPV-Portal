@@ -1,14 +1,4 @@
-# SASH-VPV Portal
-
-## Project team
-
-**University:** National University of Technology (NUTECH), Islamabad
-
-| Role | Name | Email |
-|------|------|-------|
-| Project Lead | Syed Muhamamd Huzaifa Chishty | muhammadhuzaifaf22@nutech.edu.pk |
-| Member | Shanza Rahim | shanzarahimf22@nutech.edu.pk |
-| Supervisor | Dr. Benish Fida (HoD Artificial Intelligence) | benish.fida@nutech.edu.pk |
+﻿# SASH-VPV Portal
 
 **Dataset:** [SASH-VPV on Kaggle](https://www.kaggle.com/datasets/sashinoventures/sash-vpv-subcutaneous-vascular-palm-vein-data) — full corpus (2,667 images, 122 subjects) in `data/raw/img/`
 
@@ -803,3 +793,4 @@ Dedicated marketing block on the customer home page describing the SASH-VPV subc
 - Build summary: `docs/FINAL_SUMMARY.md`
 - GPU setup: `training/gpu/SETUP.md`
 - Re-capture screenshots: `python scripts/capture_readme_screenshots.py` (with backend + frontend running)
+
