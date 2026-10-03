@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Ensure Saud Akbar account has admin role and refresh palm login templates."""
+"""Ensure admin account has admin role and refresh palm login templates."""
 from __future__ import annotations
 
 import sys
@@ -14,7 +14,7 @@ from backend.auth.template_cache import refresh_account_templates
 from backend.db.base import SessionLocal
 from backend.db import models
 
-ADMIN_EMAIL = "saudakbar65367@gmail.com"
+ADMIN_EMAIL = "muhammadhuzaifaf22@nutech.edu.pk"
 
 
 def main() -> None:

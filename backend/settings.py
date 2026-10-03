@@ -62,7 +62,7 @@ XRTECH_SDK_DIR = (
 )
 
 # SMTP — defaults to primary admin Gmail; set SMTP_PASSWORD in .env for delivery
-DEFAULT_ADMIN_EMAIL = "saudakbar65367@gmail.com"
+DEFAULT_ADMIN_EMAIL = "muhammadhuzaifaf22@nutech.edu.pk"
 SMTP_HOST = os.environ.get("SMTP_HOST", "smtp.gmail.com")
 SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER", DEFAULT_ADMIN_EMAIL)

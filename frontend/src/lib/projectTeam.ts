@@ -19,8 +19,4 @@ export const PROJECT_MEMBERS = [
     name: "Shanza Rahim",
     email: "shanzarahimf22@nutech.edu.pk",
   },
-  {
-    name: "Saud Akbar",
-    email: "saudakbarf22@nutech.edu.pk",
-  },
 ] as const

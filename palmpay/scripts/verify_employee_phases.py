@@ -21,7 +21,7 @@ from backend.db import models
 from backend.main import app
 from backend.settings import ATTENDANCE_CRON_SECRET
 
-ADMIN_EMAIL = "saudakbar65367@gmail.com"
+ADMIN_EMAIL = "muhammadhuzaifaf22@nutech.edu.pk"
 EMPLOYEE_EMAIL = "ameerkhanf22@nutech.edu.pk"
 TEST_PASSWORD = "VerifyPhaseTest1!"
 

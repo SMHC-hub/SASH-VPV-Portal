@@ -10,7 +10,7 @@ import httpx
 
 ROOT = Path(__file__).resolve().parent.parent
 BASE = "http://127.0.0.1:8000"
-ADMIN_EMAIL = "saudakbar65367@gmail.com"
+ADMIN_EMAIL = "muhammadhuzaifaf22@nutech.edu.pk"
 EMPLOYEE_EMAIL = "ameerkhanf22@nutech.edu.pk"
 TEST_PASSWORD = "VerifyPhaseTest1!"
 

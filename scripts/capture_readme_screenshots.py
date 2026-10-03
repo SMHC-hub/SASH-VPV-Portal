@@ -14,7 +14,7 @@ VIEWPORT = {"width": 1440, "height": 900}
 PWD = "VeinPayDemo1!"
 
 ACCOUNTS = {
-    "admin": "saudakbar65367@gmail.com",
+    "admin": "muhammadhuzaifaf22@nutech.edu.pk",
     "employee": "ameerkhanf22@nutech.edu.pk",
     "owner": "demo-shop@example.com",
     "customer": "cart.test@veinpay.local",

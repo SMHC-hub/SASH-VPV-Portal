@@ -81,7 +81,7 @@ def _migrate_account_role() -> None:
 
 def _ensure_admin_role() -> None:
     """Bootstrap: ensure at least one admin exists; never re-promote the first account if an admin is already set."""
-    preferred_admin = "saudakbar65367@gmail.com"
+    preferred_admin = "muhammadhuzaifaf22@nutech.edu.pk"
     with engine.connect() as conn:
         admin_count = conn.execute(
             text("SELECT COUNT(*) FROM accounts WHERE role = 'admin'")

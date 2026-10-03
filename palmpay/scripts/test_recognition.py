@@ -8,7 +8,7 @@ import urllib.error
 import urllib.request
 
 BASE = "http://127.0.0.1:8000"
-ADMIN_EMAIL = "saudakbar65367@gmail.com"
+ADMIN_EMAIL = "muhammadhuzaifaf22@nutech.edu.pk"
 TEST_PASSWORD = "VerifyPhaseTest1!"
 
 

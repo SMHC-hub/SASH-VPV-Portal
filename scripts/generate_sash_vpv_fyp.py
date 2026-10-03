@@ -26,7 +26,6 @@ CONTENT = {
     3: "Project Team",
     4: "Syed Muhammad Huzaifa Chishty",
     5: "Shanza Rahim",
-    6: "Saud Akbar",
     7: "Introduction",
     8: (
         "Pakistan has strong digital identity at onboarding through CNIC and mobile wallets, "

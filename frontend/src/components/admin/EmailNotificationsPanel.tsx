@@ -24,7 +24,7 @@ const REASON_LABELS: Record<string, string> = {
     "Brevo blocked this server's IP. In Brevo go to SMTP & API → SMTP → disable IP restriction, or add your public IP under Security → Authorized IPs.",
   no_recipient: "No administrator email found.",
   send_failed:
-    "SMTP send failed. Verify saudakbar65367@gmail.com is verified as a sender in Brevo, then check backend logs.",
+    "SMTP send failed. Verify muhammadhuzaifaf22@nutech.edu.pk is verified as a sender in Brevo, then check backend logs.",
   no_admin_email: "No administrator account email found.",
 }
 
