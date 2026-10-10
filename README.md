@@ -1,4 +1,5 @@
-# SASH-VPV Portal
+# 🖐️ SASH-VPV-Biometric-System
+### Contactless Near-Infrared Palm-Vein Recognition Platform and Hardware-Integrated Authentication
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
