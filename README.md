@@ -1,4 +1,10 @@
-﻿# SASH-VPV Portal
+# SASH-VPV Portal
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110%2B-009688.svg)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-19-61DAFB.svg)](https://react.dev)
+[![Dataset](https://img.shields.io/badge/Kaggle-Dataset-20BEFF.svg)](https://www.kaggle.com/datasets/sashinoventures/sash-vpv-subcutaneous-vascular-palm-vein-data)
 
 **Dataset:** [SASH-VPV on Kaggle](https://www.kaggle.com/datasets/sashinoventures/sash-vpv-subcutaneous-vascular-palm-vein-data) — full corpus (2,667 images, 122 subjects) in `data/raw/img/`
 
@@ -793,4 +799,10 @@ Dedicated marketing block on the customer home page describing the SASH-VPV subc
 - Build summary: `docs/FINAL_SUMMARY.md`
 - GPU setup: `training/gpu/SETUP.md`
 - Re-capture screenshots: `python scripts/capture_readme_screenshots.py` (with backend + frontend running)
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
